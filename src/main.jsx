@@ -504,10 +504,7 @@ function App(){
         jobs={jobs}
         contacts={contacts}
         areas={areas}
-        onEditJob={j=>{
-          const{contact,location,...job}=j;
-          openModal("job",{...job,scheduled_at:job.scheduled_at?new Date(job.scheduled_at).toISOString().slice(0,16):""});
-        }}
+        onAddressSaved={()=>reload()}
      />}
 
      {tab==="areas"&&<div className="area-page content-stack">
