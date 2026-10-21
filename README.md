@@ -34,3 +34,13 @@ Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (a public publishable
 Use your **existing Ignite portal account** on the CRM login screen. If the account password is unavailable, it must be recovered through Supabase's supported password recovery flow. Existing Ignite portal authentication users are reused, but CRM records are separate.
 
 This is a private operational demo, not a fully tested production system. Google Calendar two-way sync, automatic distance/time optimization, and inbox-based new-lead synchronization are not connected yet. Google Maps opens externally for live driving estimates.
+
+## Estimate route planner (October 21, 2026)
+
+Use **Estimate routes** in the sidebar. Choose a date, enter a **street address where the crew is starting**, choose whether to finish back at that location, and select up to eight existing leads/estimates. Move selected stops up/down, click **Save route plan** to persist this day's itinerary in the private `epoxy_estimate_routes` Supabase table, and use **Open directions in Google Maps** to review roads and driving time. Plans are shared across the approved Ignite and Epoxy accounts by date.
+
+Most of the first ten Epoxy ad leads only submitted **ZIP codes**. The route preview marks those as *approximate*: Google Maps directs to the ZIP area, not the homeowner's address. Collect and save full addresses before routing an actual visit.
+
+**Automatic ordering** uses a server-only Vercel endpoint `/api/optimize-estimate-route`. It checks the signed-in Supabase user and workspace membership, reads only permitted job addresses, then calls Google Routes API Compute Routes with `optimizeWaypointOrder`. To activate automatic driving-order optimization, enable Routes API billing in Google Cloud and add the secret **`GOOGLE_MAPS_ROUTES_API_KEY`** to Vercel's project environment variables (do not prefix it with `VITE_`). Requests to Google Routes API may incur charges. Until configured, route plan saving and Google Maps directions work; the automatic optimization button reports that configuration is needed. Directions URLs can be limited to three intermediate waypoints in mobile browsers; validate each route in the Google Maps app.
+
+Migration: `supabase/estimate-route-plans.sql` was applied to the existing Ignite Supabase project under the protected Epoxy workspace. Original imported records were not changed.
