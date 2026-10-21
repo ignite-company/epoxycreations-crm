@@ -19,6 +19,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const connected = Boolean(SUPABASE_URL && KEY);
 const db = connected ? createClient(SUPABASE_URL, KEY) : null;
+const DATA_TABLES={contacts:"epoxy_contacts",jobs:"epoxy_jobs",tasks:"epoxy_tasks",service_areas:"epoxy_service_areas"};
 const STAGES = [
   { id: "imported", label: "Imported · review", color: "gray" },
   { id: "new", label: "New lead", color: "blue" },
@@ -124,7 +125,7 @@ function Empty({icon:Icon=CircleHelp,title,subtitle,action}){return <div classNa
 function Login({onLogin}){
  const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[message,setMessage]=useState("");const[loading,setLoading]=useState(false);
  async function submit(e){e.preventDefault();setLoading(true);setMessage("");const{error}=await db.auth.signInWithPassword({email,password});if(error)setMessage(error.message);else onLogin();setLoading(false);}
- return <div className="login-bg"><div className="login-card"><Brand/><div className="login-hero"><ShieldCheck size={32}/><h1>Welcome back</h1><p>Your customers, jobs and follow-ups, all in one place.</p></div><form onSubmit={submit} className="form-stack"><label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="owner@epoxycreations.com"/></label><label>Password<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your password"/></label>{message&&<p className="error-text">{message}</p>}<button disabled={loading} className="btn btn-primary" type="submit">{loading?"Signing in…":"Sign in"}<ArrowRight size={17}/></button></form><p className="login-footnote">Private business workspace. Accounts are created by your administrator.</p></div></div>;
+ return <div className="login-bg"><div className="login-card"><Brand/><div className="login-hero"><ShieldCheck size={32}/><h1>Welcome back</h1><p>Your customers, jobs and follow-ups, all in one place.</p></div><form onSubmit={submit} className="form-stack"><label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="contact@ignitellc.co"/></label><label>Password<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your password"/></label>{message&&<p className="error-text">{message}</p>}<button disabled={loading} className="btn btn-primary" type="submit">{loading?"Signing in…":"Sign in"}<ArrowRight size={17}/></button></form><p className="login-footnote">Sign in with your existing Ignite client portal account. Only approved Epoxy and Ignite users can access these records.</p></div></div>;
 }
 function App(){
  const[session,setSession]=useState(null);
@@ -172,11 +173,11 @@ function App(){
  },[session?.user?.id]);
  async function reload(){
   try{setLoading(true);setError("");
-   const member=await db.from("workspace_members").select("workspace_id,role,workspaces(id,name,review_link)").eq("user_id",session.user.id).limit(1).maybeSingle();
+   const member=await db.from("epoxy_workspace_members").select("workspace_id,role,epoxy_workspaces(id,name,review_link)").eq("user_id",session.user.id).limit(1).maybeSingle();
    if(member.error)throw member.error;
    if(!member.data)throw Error("No workspace is assigned to this account. Contact the administrator.");
    setWorkspace(member.data);
-   const [c,j,t,a]=await Promise.all(["contacts","jobs","tasks","service_areas"].map(table=>db.from(table).select("*").eq("workspace_id",member.data.workspace_id).order("created_at",{ascending:false})));
+   const [c,j,t,a]=await Promise.all(["contacts","jobs","tasks","service_areas"].map(table=>db.from(DATA_TABLES[table]||table).select("*").eq("workspace_id",member.data.workspace_id).order("created_at",{ascending:false})));
    for(const result of [c,j,t,a])if(result.error)throw result.error;
    setContacts(c.data||[]);setJobs(j.data||[]);setTasks(t.data||[]);setAreas(a.data||[]);
   }catch(e){setError(e.message||"Could not load business records.");}finally{setLoading(false);}
@@ -239,7 +240,7 @@ function App(){
  async function upsert(table,payload,localSetter) {
   const data={...payload,id:payload.id||uuid()};
   if(connected){
-   const out=await db.from(table).upsert({...data,workspace_id:workspace.workspace_id},{onConflict:"id"}).select().single();
+   const out=await db.from(DATA_TABLES[table]||table).upsert({...data,workspace_id:workspace.workspace_id},{onConflict:"id"}).select().single();
    if(out.error)throw out.error;return out.data;
   }
   throw Error("Secure storage is not configured. Do not enter customer data here.");
@@ -320,7 +321,7 @@ function App(){
    try{
      const rows=parseLeadCSV(await file.text());
      if(rows.length>500)throw Error("Import a maximum of 500 leads at once.");
-     const knownSourceIds=new Set(jobs.map(j=>j.lead_details?.source_message_id).filter(Boolean));
+     const knownSourceIds=new Set(jobs.map(j=>j.lead_details?.source_message_id||j.lead_details?.gmail_message_id).filter(Boolean));
      const byEmail=new Map(contacts.filter(c=>c.email).map(c=>[c.email.toLowerCase(),c]));
      const byPhone=new Map(contacts.filter(c=>c.phone).map(c=>[c.phone.replace(/\D/g,""),c]));
      let imported=0,skipped=0;
@@ -330,10 +331,10 @@ function App(){
        const phone=(row.phone||"").replace(/\D/g,"");
        let contact=byEmail.get(row.email.toLowerCase())||(phone?byPhone.get(phone):null);
        if(!contact){
-         const add=await db.from("contacts").insert({
+         const add=await db.from("epoxy_contacts").insert({
            workspace_id:workspace.workspace_id,
            name:row.name,phone:row.phone||"",email:row.email,
-           address:row.street_address||row.zip||"",notes:""
+           address:row.street_address||(row.zip?"ZIP "+row.zip:""),notes:""
          }).select().single();
          if(add.error)throw Error("Contact "+row.name+": "+add.error.message);
          contact=add.data;byEmail.set(row.email.toLowerCase(),contact);if(phone)byPhone.set(phone,contact);
@@ -344,7 +345,7 @@ function App(){
          source_message_id:row.source_message_id,gmail_source_url:row.gmail_source_url||""
        };
        const received=row.received_at&&/^\d{4}-\d{2}-\d{2}$/.test(row.received_at)?row.received_at+"T12:00:00.000Z":new Date().toISOString();
-       const addJob=await db.from("jobs").insert({
+       const addJob=await db.from("epoxy_jobs").insert({
          workspace_id:workspace.workspace_id,contact_id:contact.id,
          service:row.project_type||"Epoxy flooring inquiry",
          source:row.lead_source||"Email inquiry",
@@ -515,7 +516,7 @@ function App(){
      {tab==="settings"&&<div className="settings-grid">
 
       <section className="panel settings-panel">
-        <div className="panel-top"><div><h2>Import customer inquiries</h2><p>Upload the Epoxy Creations email-leads CSV after connecting secure storage.</p></div></div>
+        <div className="panel-top"><div><h2>Import customer inquiries</h2><p>Import additional Epoxy Creations inquiries. Ten recent ad leads are already loaded.</p></div></div>
         <div className="import-content">
           <p>Duplicates are checked using original email message IDs. Customer details and project answers stay inside the private business workspace. Imported leads are marked <b>Imported · review</b>, not automatically qualified or booked.</p>
           <label className={"btn "+(connected&&session?"btn-primary":"btn-outline")}>
@@ -527,7 +528,7 @@ function App(){
         </div>
       </section>
 
-      <section className="panel settings-panel"><div className="panel-top"><div><h2>Business workspace</h2><p>Personalized for your crew</p></div></div><div className="setting-business"><img src={LOGO} alt="Epoxy Creations logo"/><div><b>Epoxy Creations LLC</b><span>Service territories</span><span>Custom workspace by Ignite Co.</span></div></div><div className="setting-detail"><span>Workspace</span><b>{workspace?.workspaces?.name||"Epoxy Creations Command Center"}</b></div><div className="setting-detail"><span>Data storage</span><b>{connected?"Private Supabase database":"Browser-only preview"}</b></div>{connected&&<button className="btn btn-outline" onClick={async()=>{await db.auth.signOut();}}><LogOut size={16}/> Sign out</button>}</section>
+      <section className="panel settings-panel"><div className="panel-top"><div><h2>Business workspace</h2><p>Personalized for your crew</p></div></div><div className="setting-business"><img src={LOGO} alt="Epoxy Creations logo"/><div><b>Epoxy Creations LLC</b><span>Service territories</span><span>Custom workspace by Ignite Co.</span></div></div><div className="setting-detail"><span>Workspace</span><b>{workspace?.epoxy_workspaces?.name||"Epoxy Creations Command Center"}</b></div><div className="setting-detail"><span>Data storage</span><b>{connected?"Private Supabase database":"Browser-only preview"}</b></div>{connected&&<button className="btn btn-outline" onClick={async()=>{await db.auth.signOut();}}><LogOut size={16}/> Sign out</button>}</section>
       <section className="panel settings-panel"><div className="panel-top"><div><h2>Integrations</h2><p>Bring the platforms you already use together</p></div></div><div className="integration-row"><div className="integration-icon"><CalendarDays size={21}/></div><div><b>Google Calendar</b><span>Two-way sync not connected</span></div><a href="https://calendar.google.com/" target="_blank" rel="noreferrer">Open <ExternalLink size={15}/></a></div><div className="integration-row"><div className="integration-icon"><Star size={21}/></div><div><b>Google Business Profile</b><span>Reviews and profile API not connected</span></div><a href="https://business.google.com/" target="_blank" rel="noreferrer">Open <ExternalLink size={15}/></a></div><div className="integration-row"><div className="integration-icon"><Link2 size={21}/></div><div><b>Epoxy Creations website forms</b><span>Automatic lead capture not connected</span></div><span className="soon">Planned</span></div></section>
       <section className="panel settings-panel"><div className="panel-top"><div><h2>Data & privacy</h2><p>Your contacts and job history belong to Epoxy Creations</p></div></div><div className="privacy-text"><ShieldCheck size={20}/><span>{connected?"CRM records are protected by sign-in and workspace row-level access policies.":"This preview stores changes only in this browser. Do not enter actual customer details until the secure database is configured."}</span></div><button onClick={exportJobs} className="btn btn-outline"><Download size={16}/> Export jobs as CSV</button></section>
      </div>}
@@ -587,12 +588,12 @@ function App(){
     {modal==="job"&&<>
       {form.created_at&&<div className="lead-received-banner"><div><Clock size={18}/><div><b>Lead received</b><span>{leadReceived(form.created_at)}</span></div></div><strong>{leadAge(form.created_at,now)}</strong></div>}
       {form.lead_details&&Object.keys(form.lead_details).length>0&&<section className="intake-details">
-       <div className="intake-heading"><div><b><ClipboardList size={17}/> {form.lead_details.source_message_id?"Original email inquiry":"Customer project details"}</b><span>Project information captured from the customer's original request</span></div><span className="intake-new">{form.lead_details.source_message_id?"Email lead":"Project lead"}</span></div>
+       <div className="intake-heading"><div><b><ClipboardList size={17}/> {(form.lead_details.source_message_id||form.lead_details.gmail_message_id)?"Original email inquiry":"Customer project details"}</b><span>Project information captured from the customer's original request</span></div><span className="intake-new">{(form.lead_details.source_message_id||form.lead_details.gmail_message_id)?"Email lead":"Project lead"}</span></div>
        <div className="intake-grid">
         {[
           ["Finish type","finish_type"],["Approximate size","approx_size"],
           ["Project timeline","timeline"],["ZIP code","zip"],
-          ["Date received","received_at"]
+          ["Date received","lead_received_at"]
         ].map(([label,key])=><div key={key}><span>{label}</span><strong>{form.lead_details[key]||"Not provided"}</strong></div>)}
        </div>
        <div className="intake-source"><MapPin size={15}/><span>Source: {form.source||"Epoxy Creations inquiry"}</span>
