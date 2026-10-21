@@ -120,20 +120,20 @@ create policy "Owners edit workspace" on public.epoxy_workspaces
  );
 
 create policy "Members manage contacts" on public.epoxy_contacts for all to authenticated
- using (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=contacts.workspace_id and m.user_id=auth.uid()))
- with check (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=contacts.workspace_id and m.user_id=auth.uid()));
+ using (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=epoxy_contacts.workspace_id and m.user_id=auth.uid()))
+ with check (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=epoxy_contacts.workspace_id and m.user_id=auth.uid()));
 
 create policy "Members manage jobs" on public.epoxy_jobs for all to authenticated
- using (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=jobs.workspace_id and m.user_id=auth.uid()))
- with check (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=jobs.workspace_id and m.user_id=auth.uid()));
+ using (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=epoxy_jobs.workspace_id and m.user_id=auth.uid()))
+ with check (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=epoxy_jobs.workspace_id and m.user_id=auth.uid()));
 
 create policy "Members manage service areas" on public.epoxy_service_areas for all to authenticated
- using (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=service_areas.workspace_id and m.user_id=(select auth.uid())))
- with check (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=service_areas.workspace_id and m.user_id=(select auth.uid())));
+ using (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=epoxy_service_areas.workspace_id and m.user_id=(select auth.uid())))
+ with check (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=epoxy_service_areas.workspace_id and m.user_id=(select auth.uid())));
 
 create policy "Members manage tasks" on public.epoxy_tasks for all to authenticated
- using (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=tasks.workspace_id and m.user_id=auth.uid()))
- with check (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=tasks.workspace_id and m.user_id=auth.uid()));
+ using (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=epoxy_tasks.workspace_id and m.user_id=auth.uid()))
+ with check (exists(select 1 from public.epoxy_workspace_members m where m.workspace_id=epoxy_tasks.workspace_id and m.user_id=auth.uid()));
 
 
 -- No creation trigger: only provision explicitly approved Ignite and Epoxy demo members.
