@@ -31,13 +31,13 @@ const STAGES = [
   { id: "lost", label: "Lost", color: "gray" }
 ];
 const TABS = [
-  { id: "dashboard", label: "Overview", icon: LayoutDashboard },
-  { id: "pipeline", label: "Lead pipeline", icon: Kanban },
-  { id: "areas", label: "Service areas", icon: MapPinned },
-  { id: "estimates_route", label: "Estimate routes", icon: Route },
-  { id: "jobs", label: "Jobs & estimates", icon: ClipboardList },
-  { id: "customers", label: "Customers", icon: Users },
+  { id: "dashboard", label: "Home", icon: LayoutDashboard },
+  { id: "pipeline", label: "Leads", icon: Kanban },
+  { id: "estimates_route", label: "Plan estimates", icon: Route },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
+  { id: "jobs", label: "Jobs & quotes", icon: ClipboardList },
+  { id: "customers", label: "Customers", icon: Users },
+  { id: "areas", label: "Service areas", icon: MapPinned },
   { id: "tasks", label: "Follow-ups", icon: ListTodo },
   { id: "settings", label: "Settings", icon: Settings }
 ];
@@ -374,7 +374,7 @@ function App(){
   dashboard:["Good "+(new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening")+", Epoxy Creations","Here's what's happening across your business."],
   pipeline:["Lead pipeline","Move every inquiry from first contact to completed job."],
   areas:["Service area planner","Keep nearby leads and job sites together, then build an efficient day."],
-  estimates_route:["Estimate route planner","Start at your address and plan convenient stops for on-site estimates."],
+  estimates_route:["Plan estimates","Pick customers and open directions in Google Maps."],
   jobs:["Jobs & estimates","Quotes and confirmed work, without the lead pipeline clutter."],
   customers:["Customers","Only customers with completed jobs appear here, with their job history."],
   calendar:["Job calendar","Know what is scheduled and what's coming up."],
