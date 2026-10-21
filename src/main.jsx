@@ -20,6 +20,7 @@ const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 const connected = Boolean(SUPABASE_URL && KEY);
 const db = connected ? createClient(SUPABASE_URL, KEY) : null;
 const STAGES = [
+  { id: "imported", label: "Imported · review", color: "gray" },
   { id: "new", label: "New lead", color: "blue" },
   { id: "contacted", label: "Contacted", color: "gray" },
   { id: "estimate_sent", label: "Estimate sent", color: "orange" },
@@ -68,33 +69,12 @@ const localDateTimeInput = value => {
 };
 const DAY = 86400000;
 const dateOffset = (n) => new Date(Date.now() + n * DAY).toISOString();
-const samples = {
-  areas: [
-    {id:"demo-a1",name:"North loop",zip_codes:"07011, 07012",base_address:"",created_at:dateOffset(-5)},
-    {id:"demo-a2",name:"Central loop",zip_codes:"07501, 07503",base_address:"",created_at:dateOffset(-5)},
-    {id:"demo-a3",name:"West loop",zip_codes:"07470, 07474",base_address:"",created_at:dateOffset(-5)}
-  ],
-  contacts: [
-    { id:"demo-c1", name:"Jordan Mitchell", phone:"(352) 555-0101", email:"jordan@example.com", address:"Clifton, NJ 07011", notes:"Demo customer, not a real Epoxy Creations contact." },
-    { id:"demo-c2", name:"Alex Rivera", phone:"(352) 555-0102", email:"alex@example.com", address:"Paterson, NJ 07501", notes:"Demo customer." },
-    { id:"demo-c3", name:"Casey Brooks", phone:"(352) 555-0103", email:"casey@example.com", address:"Wayne, NJ 07470", notes:"Demo customer." },
-    { id:"demo-c4", name:"Taylor Reed", phone:"(352) 555-0104", email:"taylor@example.com", address:"Clifton, NJ 07011", notes:"Demo customer." }
-  ],
-  jobs: [
-    { id:"demo-j1", contact_id:"demo-c1", service:"Garage epoxy flooring", source:"Website", stage:"new", estimate_amount:375, final_amount:null, scheduled_at:null, notes:"Needs a quote", created_at:dateOffset(-1) },
-    { id:"demo-j2", contact_id:"demo-c2", service:"Concrete coating", source:"Phone", stage:"estimate_sent", estimate_amount:240, final_amount:null, scheduled_at:null, notes:"Waiting for approval", created_at:dateOffset(-3) },
-    { id:"demo-j3", contact_id:"demo-c3", service:"Commercial floor coating", source:"Referral", stage:"booked", estimate_amount:950, final_amount:null, scheduled_at:dateOffset(1), notes:"Crew: 2 people", created_at:dateOffset(-5) },
-    { id:"demo-j4", contact_id:"demo-c4", service:"Patio coating", source:"Google", stage:"completed", estimate_amount:180, final_amount:180, scheduled_at:dateOffset(-2), notes:"Paid", created_at:dateOffset(-9) }
-  ],
-  tasks: [
-    { id:"demo-t1", contact_id:"demo-c1", job_id:"demo-j1", title:"Call Jordan about their garage cleanout", due_at:dateOffset(0), completed:false },
-    { id:"demo-t2", contact_id:"demo-c2", job_id:"demo-j2", title:"Follow up on furniture removal estimate", due_at:dateOffset(1), completed:false },
-    { id:"demo-t3", contact_id:"demo-c4", job_id:"demo-j4", title:"Send review request to Taylor", due_at:dateOffset(2), completed:false }
-  ]
-};
+// No synthetic customer records. Production requires a private customer database.
+const samples={areas:[],contacts:[],jobs:[],tasks:[]};
 function localRead(key) {
-  try { const raw = localStorage.getItem("epoxy_demo_" + key); return raw ? JSON.parse(raw) : samples[key]; }
-  catch { return samples[key]; }
+  // Purge earlier preview records so previous visitors don't see fake leads.
+  try { localStorage.removeItem("epoxy_demo_"+key); } catch {}
+  return [];
 }
 const money = (n) => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(Number(n)||0);
 const shortDate = (n) => n ? new Date(n).toLocaleDateString("en-US",{month:"short",day:"numeric"}) : "Not scheduled";
@@ -141,6 +121,8 @@ function App(){
  const[areaFilter,setAreaFilter]=useState("all");
  const[routeDate,setRouteDate]=useState(()=>new Date().toLocaleDateString("en-CA"));
  const[query,setQuery]=useState("");
+ const[importing,setImporting]=useState(false);
+ const[importReport,setImportReport]=useState("");
  const[modal,setModal]=useState(null);
  const[form,setForm]=useState({});
  const[saving,setSaving]=useState(false);
@@ -240,7 +222,7 @@ function App(){
    const out=await db.from(table).upsert({...data,workspace_id:workspace.workspace_id},{onConflict:"id"}).select().single();
    if(out.error)throw out.error;return out.data;
   }
-  localSetter(old=>old.some(x=>x.id===data.id)?old.map(x=>x.id===data.id?{...x,...data}:x):[data,...old]);
+  throw Error("Secure storage is not configured. Do not enter customer data here.");
   return data;
  }
  async function save(e){
@@ -279,7 +261,7 @@ function App(){
  const areaForJob=j=>{
    const manuallySet=areas.find(a=>a.id===j.route_zone);
    if(manuallySet)return manuallySet;
-   const zip=zipFrom(addressForJob(j));
+   const zip=zipFrom(j.pickup_address||"")||zipFrom(person(j.contact_id)?.address||"")||zipFrom(j.lead_details?.zip||"");
    return zip ? areas.find(a=>String(a.zip_codes||"").split(/[,;\s]+/).includes(zip))||null : null;
  };
  const inArea=(j,id)=>id==="all"|| (id==="unassigned"?!areaForJob(j):areaForJob(j)?.id===id);
@@ -309,7 +291,7 @@ function App(){
      setToast("Stop order updated");
    }catch(e){setError(e.message||"Unable to reorder stops");}
  }
- function resetDemo(){if(!connected){setContacts(samples.contacts);setJobs(samples.jobs);setTasks(samples.tasks);setAreas(samples.areas);setToast("Sample records restored");}}
+ function resetDemo(){if(!connected){setContacts([]);setJobs([]);setTasks([]);setAreas([]);setToast("Preview records cleared");}}
  function exportJobs(){
   csvDownload([["Contact","Phone","Service","Source","Stage","Estimate","Final amount","Scheduled","Notes"],...jobs.map(j=>[person(j.contact_id)?.name,person(j.contact_id)?.phone,j.service,j.source,stageInfo(j.stage).label,j.estimate_amount,j.final_amount,j.scheduled_at,j.notes])],"epoxy-creations-jobs.csv");
  }
