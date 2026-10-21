@@ -182,12 +182,12 @@ function App(){
  const person=(id)=>contacts.find(c=>c.id===id);
  const addressForJob=j=>{
   if(!j)return "";
-  const own=(j.job site_address||"").trim();
+  const own=(j.pickup_address||"").trim();
   if(hasStreetAddress(own))return own;
   const contact=person(j.contact_id);
   return hasStreetAddress(contact?.address||"")?contact.address.trim():"";
  };
- const draftAddress=j=>j?._addressEdited?(j.job site_address||""):(j?.job site_address||addressForJob(j));
+ const draftAddress=j=>j?._addressEdited?(j.pickup_address||""):(j?.pickup_address||addressForJob(j));
  const selectedDayJobs=selectedDay?jobs.filter(j=>j.scheduled_at&&new Date(j.scheduled_at).toDateString()===selectedDay.toDateString()&&j.stage!=="lost").sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at)):[];
  function viewHouse(j){
   const address=addressForJob(j);
@@ -247,12 +247,12 @@ function App(){
   try{
    if(modal==="lead"){
     const c=await upsert("contacts",{name:form.name.trim(),phone:form.phone||"",email:form.email||"",address:form.address||"",notes:form.contact_notes||"",created_at:new Date().toISOString()},setContacts);
-    await upsert("jobs",{contact_id:c.id,service:form.service||"Epoxy flooring",source:form.source||"Website",job site_address:hasStreetAddress(form.address)?form.address.trim():"",stage:"new",estimate_amount:null,final_amount:null,scheduled_at:null,notes:form.notes||"",route_zone:form.route_zone||"",visit_order:null,created_at:new Date().toISOString()},setJobs);
+    await upsert("jobs",{contact_id:c.id,service:form.service||"Epoxy flooring",source:form.source||"Website",pickup_address:hasStreetAddress(form.address)?form.address.trim():"",stage:"new",estimate_amount:null,final_amount:null,scheduled_at:null,notes:form.notes||"",route_zone:form.route_zone||"",visit_order:null,created_at:new Date().toISOString()},setJobs);
    }
    if(modal==="contact")await upsert("contacts",{id:form.id,name:form.name.trim(),phone:form.phone||"",email:form.email||"",address:form.address||"",notes:form.notes||""},setContacts);
    if(modal==="job"){
     const address=draftAddress(form).trim();
-    await upsert("jobs",{id:form.id,contact_id:form.contact_id,service:form.service||"Epoxy flooring",source:form.source||"Other",job site_address:address,stage:form.stage||"new",estimate_amount:form.estimate_amount===""||form.estimate_amount==null?null:Number(form.estimate_amount),final_amount:form.final_amount===""||form.final_amount==null?null:Number(form.final_amount),scheduled_at:form.scheduled_at?new Date(form.scheduled_at).toISOString():null,notes:form.notes||"",route_zone:form.route_zone||"",visit_order:form.visit_order??null,lead_details:form.lead_details||{},created_at:form.created_at||new Date().toISOString()},setJobs);
+    await upsert("jobs",{id:form.id,contact_id:form.contact_id,service:form.service||"Epoxy flooring",source:form.source||"Other",pickup_address:address,stage:form.stage||"new",estimate_amount:form.estimate_amount===""||form.estimate_amount==null?null:Number(form.estimate_amount),final_amount:form.final_amount===""||form.final_amount==null?null:Number(form.final_amount),scheduled_at:form.scheduled_at?new Date(form.scheduled_at).toISOString():null,notes:form.notes||"",route_zone:form.route_zone||"",visit_order:form.visit_order??null,lead_details:form.lead_details||{},created_at:form.created_at||new Date().toISOString()},setJobs);
     // The contact record remembers the latest job site address, but each job keeps its own address.
     const existing=person(form.contact_id);
     if(existing&&hasStreetAddress(address)&&existing.address!==address){
@@ -537,7 +537,7 @@ function App(){
       <div className="form-grid"><label>Stage<select value={form.stage||"new"} onChange={e=>setForm({...form,stage:e.target.value})}>{STAGES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select></label><label>Lead source<select value={form.source||"Phone"} onChange={e=>setForm({...form,source:e.target.value})}>{["Website","Google","Phone","Referral","Facebook","Other"].map(x=><option key={x}>{x}</option>)}</select></label></div>
       <div className="form-grid"><label>Estimate ($)<input min="0" step="0.01" type="number" value={form.estimate_amount??""} onChange={e=>setForm({...form,estimate_amount:e.target.value})} placeholder="0"/></label><label>Final job value ($)<input min="0" step="0.01" type="number" value={form.final_amount??""} onChange={e=>setForm({...form,final_amount:e.target.value})} placeholder="0"/></label></div>
       <div className="job site-address-block">
-       <label><span className="field-label-icon"><MapPin size={15}/> Job site street address</span><input value={draftAddress(form)} onChange={e=>setForm({...form,job site_address:e.target.value,_addressEdited:true})} placeholder="123 Main St, Clifton, NJ 07011 32601" autoComplete="street-address"/></label>
+       <label><span className="field-label-icon"><MapPin size={15}/> Job site street address</span><input value={draftAddress(form)} onChange={e=>setForm({...form,pickup_address:e.target.value,_addressEdited:true})} placeholder="123 Main St, Clifton, NJ 07011 32601" autoComplete="street-address"/></label>
        <div className="job site-action-links">
         {hasStreetAddress(draftAddress(form))?
          <a href={mapsUrl(draftAddress(form))} target="_blank" rel="noopener noreferrer"><MapPin size={15}/> Open in Maps <ExternalLink size={13}/></a>:
