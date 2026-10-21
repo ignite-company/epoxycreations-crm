@@ -10,6 +10,7 @@ import {
   CalendarCheck2, CircleDot, Route, MapPinned, Navigation, ArrowUp, ArrowDown, Layers3
 } from "lucide-react";
 import "./styles.css";
+import EstimateRoutes from "./EstimateRoutes.jsx";
 
 const LOGO = "/logo.svg";
 const MARK = "/mark.svg";
@@ -33,6 +34,7 @@ const TABS = [
   { id: "dashboard", label: "Overview", icon: LayoutDashboard },
   { id: "pipeline", label: "Lead pipeline", icon: Kanban },
   { id: "areas", label: "Service areas", icon: MapPinned },
+  { id: "estimates_route", label: "Estimate routes", icon: Route },
   { id: "jobs", label: "Jobs & estimates", icon: ClipboardList },
   { id: "customers", label: "Customers", icon: Users },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
@@ -372,6 +374,7 @@ function App(){
   dashboard:["Good "+(new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening")+", Epoxy Creations","Here's what's happening across your business."],
   pipeline:["Lead pipeline","Move every inquiry from first contact to completed job."],
   areas:["Service area planner","Keep nearby leads and job sites together, then build an efficient day."],
+  estimates_route:["Estimate route planner","Start at your address and plan convenient stops for on-site estimates."],
   jobs:["Jobs & estimates","Quotes and confirmed work, without the lead pipeline clutter."],
   customers:["Customers","Only customers with completed jobs appear here, with their job history."],
   calendar:["Job calendar","Know what is scheduled and what's coming up."],
@@ -492,6 +495,20 @@ function App(){
  </section>
  <div className="calendar-notice"><CalendarCheck2 size={20}/><div><b>Google Calendar is not connected yet</b><p>Scheduled jobs appear inside this CRM. Two-way Google Calendar syncing will require the client's Google authorization.</p></div><a href="https://calendar.google.com/" target="_blank" rel="noreferrer">Open Google Calendar <ExternalLink size={15}/></a></div>
  </div>}
+
+
+     {tab==="estimates_route"&&<EstimateRoutes
+        db={db}
+        session={session}
+        workspaceId={workspace?.workspace_id}
+        jobs={jobs}
+        contacts={contacts}
+        areas={areas}
+        onEditJob={j=>{
+          const{contact,location,...job}=j;
+          openModal("job",{...job,scheduled_at:job.scheduled_at?new Date(job.scheduled_at).toISOString().slice(0,16):""});
+        }}
+     />}
 
      {tab==="areas"&&<div className="area-page content-stack">
        <section className="area-hero"><div><span className="area-kicker"><Layers3 size={14}/> TERRITORY OPERATIONS</span><h2>Work by area. Not by accident.</h2><p>Create the zones you actually service, group leads by ZIP, and plan nearby stops on the same day. No more jumping across town between jobs.</p></div><button className="btn btn-primary" onClick={()=>openModal("area",{name:"",zip_codes:"",base_address:""})}><Plus size={17}/> New service area</button></section>
