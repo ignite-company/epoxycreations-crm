@@ -25,7 +25,7 @@ const mapsDirections=(origin,stops)=>{
   return result.length<=2048?result:"";
 };
 
-export default function EstimateRoutes({db,workspaceId,jobs=[],contacts=[],onEditJob}){
+export default function EstimateRoutes({db,workspaceId,jobs=[],contacts=[],onAddressSaved}){
   const [date,setDate]=useState(today);
   const [start,setStart]=useState("");
   const [selected,setSelected]=useState([]);
@@ -35,6 +35,10 @@ export default function EstimateRoutes({db,workspaceId,jobs=[],contacts=[],onEdi
   const [error,setError]=useState("");
   const [search,setSearch]=useState("");
   const [reorder,setReorder]=useState(false);
+  const [editingAddress,setEditingAddress]=useState(null);
+  const [addressValue,setAddressValue]=useState("");
+  const [addressSaving,setAddressSaving]=useState(false);
+  const [addressError,setAddressError]=useState("");
   const contactIndex=useMemo(()=>new Map(contacts.map(c=>[c.id,c])),[contacts]);
   const leads=useMemo(()=>jobs
     .filter(j=>!["lost","completed","booked"].includes(j.stage))
@@ -90,6 +94,22 @@ export default function EstimateRoutes({db,workspaceId,jobs=[],contacts=[],onEdi
     [next[index],next[other]]=[next[other],next[index]];
     setSelected(next);setStatus("");
   }
+  async function saveStreetAddress(job){
+    const address=addressValue.trim();
+    if(!fullAddress(address)||address.length<15){
+      setAddressError("Please enter the street number, street name, city and state.");
+      return;
+    }
+    if(!db||!workspaceId){setAddressError("Sign in to update customer addresses.");return;}
+    setAddressSaving(true);setAddressError("");setError("");
+    const result=await db.from("epoxy_jobs").update({pickup_address:address})
+      .eq("workspace_id",workspaceId).eq("id",job.id).select("id").single();
+    setAddressSaving(false);
+    if(result.error){setAddressError("Could not save this address. Please try again.");return;}
+    setEditingAddress(null);setAddressValue("");
+    setStatus("Address saved for "+(job.contact?.name||"customer")+".");
+    if(onAddressSaved)await onAddressSaved();
+  }
   async function save(showMessage=true){
     if(!db||!workspaceId){setError("Please sign in to save your visits.");return;}
     if(start.trim().length<8||!selectedIds.length){
@@ -109,7 +129,7 @@ export default function EstimateRoutes({db,workspaceId,jobs=[],contacts=[],onEdi
       updated_at:new Date().toISOString()
     },{onConflict:"workspace_id,plan_date"}).select("id").single();
     setSaving(false);
-    if(result.error)setError("Directions opened, but we couldn't save your plan. Try again.");
+    if(result.error)setError("We couldn't save your plan. Try again.");
     else if(showMessage)setStatus("Saved. You can come back to this date anytime.");
   }
 
@@ -148,10 +168,21 @@ export default function EstimateRoutes({db,workspaceId,jobs=[],contacts=[],onEdi
               <strong>{j.contact?.name||"Unnamed customer"}</strong>
               <span>{j.service||"Epoxy estimate"}</span>
               <small><MapPin size={12}/>{j.location.exact?j.location.address:j.location.zip?"ZIP "+j.location.zip+" only":"Address missing"}</small>
-              {!j.location.exact&&<button className="easy-address-edit" onClick={()=>onEditJob(j)}>+ Add full address</button>}
+              {!j.location.exact&&<button className="easy-address-edit" onClick={()=>{
+                setEditingAddress(j.id);setAddressValue("");setAddressError("");
+              }}>+ Add street address</button>}
             </div>
             <button className={"easy-add "+(isChosen?"active":"")} onClick={()=>toggle(j.id)}
               aria-pressed={isChosen}>{isChosen?<><Check size={15}/> Added</>:<><Plus size={15}/> Add</>}</button>
+            {editingAddress===j.id&&<div className="easy-address-inline">
+              <label>Customer's full address<input autoFocus value={addressValue}
+                placeholder="123 Main St, Binghamton, NY 13901"
+                onChange={e=>setAddressValue(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();void saveStreetAddress(j);}}}/></label>
+              <button className="easy-address-save" disabled={addressSaving} onClick={()=>{void saveStreetAddress(j);}}>{addressSaving?"Saving…":"Save address"}</button>
+              <button className="easy-address-cancel" onClick={()=>{setEditingAddress(null);setAddressError("");}}>Cancel</button>
+              {addressError&&<div className="easy-address-error">{addressError}</div>}
+            </div>}
           </div>;
         })}
       </div>
