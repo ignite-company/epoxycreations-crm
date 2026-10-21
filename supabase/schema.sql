@@ -42,7 +42,7 @@ create table if not exists public.jobs (
  pickup_address text not null default '',
  route_zone text not null default '',
  visit_order integer check(visit_order > 0),
- stage text not null default 'new' check(stage in ('new','contacted','estimate_sent','booked','completed','lost')),
+ stage text not null default 'new' check(stage in ('imported','new','contacted','estimate_sent','booked','completed','lost')),
  estimate_amount numeric(12,2) check(estimate_amount>=0),
  final_amount numeric(12,2) check(final_amount>=0),
  scheduled_at timestamptz,
