@@ -420,7 +420,7 @@ function App(){
       </section>}
      {tab==="calendar"&&<div className="content-stack">
  <section className="panel calendar-panel">
-  <div className="panel-top"><div><h2>{month.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</h2><p>Select any day to see every scheduled job site and its address.</p></div><div className="calendar-actions"><button className="icon-btn outline" aria-label="Previous month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()-1,1))}><ChevronLeft size={19}/></button><button className="btn btn-outline" onClick={()=>setMonth(new Date(new Date().getFullYear(),new Date().getMonth(),1))}>Today</button><button className="icon-btn outline" aria-label="Next month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()+1,1))}><ChevronRight size={19}/></button></div></div>
+  <div className="panel-top"><div><h2>{month.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</h2><p>Select any day to see every scheduled job and its address.</p></div><div className="calendar-actions"><button className="icon-btn outline" aria-label="Previous month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()-1,1))}><ChevronLeft size={19}/></button><button className="btn btn-outline" onClick={()=>setMonth(new Date(new Date().getFullYear(),new Date().getMonth(),1))}>Today</button><button className="icon-btn outline" aria-label="Next month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()+1,1))}><ChevronRight size={19}/></button></div></div>
   <div className="calendar-grid">{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=><div key={d} className="weekday">{d}</div>)}{Array.from({length:Math.ceil((new Date(month.getFullYear(),month.getMonth(),1).getDay()+new Date(month.getFullYear(),month.getMonth()+1,0).getDate())/7)*7},(_,i)=>{
    const day=i-new Date(month.getFullYear(),month.getMonth(),1).getDay()+1;
    const cur=new Date(month.getFullYear(),month.getMonth(),day);
@@ -470,14 +470,14 @@ function App(){
       <div className="modal-top"><div><div className="eyebrow">EPOXY CREATIONS JOB SCHEDULE</div><h2>{dayLabel(selectedDay)}</h2><p>{selectedDayJobs.length} scheduled {selectedDayJobs.length===1?"job site":"job sites"} for this day, ordered by time.</p></div><button className="icon-btn light" aria-label="Close day schedule" onClick={()=>setSelectedDay(null)}><X size={20}/></button></div>
       <div className="day-schedule-list">{selectedDayJobs.length?selectedDayJobs.map(j=>{
         const c=person(j.contact_id),addr=addressForJob(j);
-        return <div key={j.id} className="day-job site">
-          <div className="day-job site-time"><Clock size={15}/><strong>{new Date(j.scheduled_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</strong></div>
-          <div className="day-job site-info"><b>{c?.name||"Customer"}</b><span>{j.service}</span><div className="day-job site-address"><MapPin size={16}/><span>{addr||"Job site address not added yet"}</span></div>
-           <div className="day-job site-links">{addr&&<a href={mapsUrl(addr)} target="_blank" rel="noopener noreferrer">Directions <ExternalLink size={13}/></a>}{c?.phone&&<a href={"tel:"+c.phone}>Call customer <Phone size={13}/></a>}<button onClick={()=>{setSelectedDay(null);editJob(j)}}>Open job <ArrowRight size={14}/></button></div>
+        return <div key={j.id} className="day-pickup">
+          <div className="day-pickup-time"><Clock size={15}/><strong>{new Date(j.scheduled_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</strong></div>
+          <div className="day-pickup-info"><b>{c?.name||"Customer"}</b><span>{j.service}</span><div className="day-pickup-address"><MapPin size={16}/><span>{addr||"Job site address not added yet"}</span></div>
+           <div className="day-pickup-links">{addr&&<a href={mapsUrl(addr)} target="_blank" rel="noopener noreferrer">Directions <ExternalLink size={13}/></a>}{c?.phone&&<a href={"tel:"+c.phone}>Call customer <Phone size={13}/></a>}<button onClick={()=>{setSelectedDay(null);editJob(j)}}>Open job <ArrowRight size={14}/></button></div>
           </div>
           <Pill stage={j.stage}/>
          </div>;
-       }):<Empty icon={CalendarDays} title="No job sites scheduled" subtitle="There are no bookings on this day. Add a job and set its date and time to see it here."/>}</div>
+       }):<Empty icon={CalendarDays} title="No jobs scheduled" subtitle="There are no bookings on this day. Add a job and set its date and time to see it here."/>}</div>
       <div className="day-schedule-foot"><button className="btn btn-outline" onClick={()=>setSelectedDay(null)}>Close schedule</button><button className="btn btn-primary" disabled={!contacts.length} onClick={()=>{const when=new Date(selectedDay);when.setHours(9,0,0,0);setSelectedDay(null);openModal("job",{contact_id:contacts[0]?.id||"",service:"Epoxy flooring",stage:"booked",source:"Phone",scheduled_at:localDateTimeInput(when)});}}><Plus size={16}/> Schedule job site</button></div>
     </div>
    </div>}
@@ -536,9 +536,9 @@ function App(){
       <div className="form-grid"><label>Customer *<select required value={form.contact_id||""} onChange={e=>setForm({...form,contact_id:e.target.value})}><option value="">Choose a customer</option>{contacts.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Service *<input required value={form.service||""} onChange={e=>setForm({...form,service:e.target.value})} placeholder="e.g. Concrete coating"/></label></div>
       <div className="form-grid"><label>Stage<select value={form.stage||"new"} onChange={e=>setForm({...form,stage:e.target.value})}>{STAGES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select></label><label>Lead source<select value={form.source||"Phone"} onChange={e=>setForm({...form,source:e.target.value})}>{["Website","Google","Phone","Referral","Facebook","Other"].map(x=><option key={x}>{x}</option>)}</select></label></div>
       <div className="form-grid"><label>Estimate ($)<input min="0" step="0.01" type="number" value={form.estimate_amount??""} onChange={e=>setForm({...form,estimate_amount:e.target.value})} placeholder="0"/></label><label>Final job value ($)<input min="0" step="0.01" type="number" value={form.final_amount??""} onChange={e=>setForm({...form,final_amount:e.target.value})} placeholder="0"/></label></div>
-      <div className="job site-address-block">
+      <div className="pickup-address-block">
        <label><span className="field-label-icon"><MapPin size={15}/> Job site street address</span><input value={draftAddress(form)} onChange={e=>setForm({...form,pickup_address:e.target.value,_addressEdited:true})} placeholder="123 Main St, Clifton, NJ 07011 32601" autoComplete="street-address"/></label>
-       <div className="job site-action-links">
+       <div className="pickup-action-links">
         {hasStreetAddress(draftAddress(form))?
          <a href={mapsUrl(draftAddress(form))} target="_blank" rel="noopener noreferrer"><MapPin size={15}/> Open in Maps <ExternalLink size={13}/></a>:
          <small>Add street, city, state and ZIP before scheduling a job site.</small>}
@@ -546,7 +546,7 @@ function App(){
          (draftAddress(form)===addressForJob(jobs.find(j=>j.id===form.id)))&&
          <button type="button" onClick={()=>viewHouse(jobs.find(j=>j.id===form.id))}><ExternalLink size={15}/> View House <ArrowUpRight size={13}/></button>}
        </div>
-       {form.id&&form._addressEdited&&draftAddress(form)!==addressForJob(jobs.find(j=>j.id===form.id))&&<p className="job site-save-hint">Save this address before using View House.</p>}
+       {form.id&&form._addressEdited&&draftAddress(form)!==addressForJob(jobs.find(j=>j.id===form.id))&&<p className="pickup-save-hint">Save this address before using View House.</p>}
       </div>
       <label>Service area<select value={form.route_zone||""} onChange={e=>setForm({...form,route_zone:e.target.value})}><option value="">Match automatically by ZIP</option>{areas.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
       <label>Scheduled date and time<input type="datetime-local" value={form.scheduled_at||""} onChange={e=>setForm({...form,scheduled_at:e.target.value})}/></label>
