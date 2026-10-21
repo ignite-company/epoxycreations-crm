@@ -12,6 +12,7 @@ import {
 import "./styles.css";
 
 const LOGO = "/logo.svg";
+const MARK = "/mark.svg";
 // Public Supabase client configuration. Vercel environment variables take precedence.
 // This publishable key is designed for browser use; row-level security protects data.
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
@@ -115,7 +116,7 @@ function csvDownload(rows,filename){
 }
 function Brand({ compact=false }){
  return <div className={"brand "+(compact?"brand-compact":"")}>
-  <div className="brand-logo"><img src={LOGO} alt="Epoxy Creations logo"/></div>
+  <div className="brand-logo"><img src={MARK} alt="Epoxy Creations logo"/></div>
   {!compact && <div className="brand-copy"><b>Epoxy Creations</b><span>COMMAND CENTER</span></div>}
  </div>;
 }
