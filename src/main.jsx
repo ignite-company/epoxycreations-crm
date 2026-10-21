@@ -587,15 +587,17 @@ function App(){
     {modal==="job"&&<>
       {form.created_at&&<div className="lead-received-banner"><div><Clock size={18}/><div><b>Lead received</b><span>{leadReceived(form.created_at)}</span></div></div><strong>{leadAge(form.created_at,now)}</strong></div>}
       {form.lead_details&&Object.keys(form.lead_details).length>0&&<section className="intake-details">
-       <div className="intake-heading"><div><b><ClipboardList size={17}/> Website quote request</b><span>Answers received directly from Epoxy Creations's website</span></div><span className="intake-new">Website lead</span></div>
+       <div className="intake-heading"><div><b><ClipboardList size={17}/> {form.lead_details.source_message_id?"Original email inquiry":"Customer project details"}</b><span>Project information captured from the customer's original request</span></div><span className="intake-new">{form.lead_details.source_message_id?"Email lead":"Project lead"}</span></div>
        <div className="intake-grid">
         {[
-          ["Junk type","junk_type"],["Amount to remove","junk_amount"],
-          ["Junk location","junk_location"],["Needed by","timeline"],
-          ["Quote preference","budget_preference"],["ZIP code","zip"]
+          ["Finish type","finish_type"],["Approximate size","approx_size"],
+          ["Project timeline","timeline"],["ZIP code","zip"],
+          ["Date received","received_at"]
         ].map(([label,key])=><div key={key}><span>{label}</span><strong>{form.lead_details[key]||"Not provided"}</strong></div>)}
        </div>
-       <div className="intake-source"><MapPin size={15}/><span>Source: {form.source||"Epoxy Creations Website Quiz"}</span>{form.lead_details.page_url&&<a href={form.lead_details.page_url} target="_blank" rel="noopener noreferrer">View source page <ExternalLink size={14}/></a>}</div>
+       <div className="intake-source"><MapPin size={15}/><span>Source: {form.source||"Epoxy Creations inquiry"}</span>
+       {typeof form.lead_details.gmail_source_url==="string"&&form.lead_details.gmail_source_url.startsWith("https://mail.google.com/mail/")&&<a href={form.lead_details.gmail_source_url} target="_blank" rel="noopener noreferrer">Open source email <ExternalLink size={14}/></a>}
+       </div>
       </section>}
       {form.contact_id&&person(form.contact_id)&&<div className="intake-customer">
        <div className="avatar">{initials(person(form.contact_id).name)}</div><div><b>{person(form.contact_id).name}</b><span>{form.stage==="completed"?"Completed customer":"Lead contact"}</span></div>
