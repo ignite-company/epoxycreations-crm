@@ -20,7 +20,7 @@ The app organizes leads by ZIP and saved manual stop order. It **does not automa
 
 ## Current environment
 
-The Vercel app works as a **sample-only preview** when no Supabase public browser configuration is provided. Preview data is kept in browser storage and is not shared across devices. **Do not enter genuine customer data in preview mode.**
+The Vercel app shows an **empty preview** when no Supabase public browser configuration is provided. All fictional lead records and previous local demo records were removed. There is **no persistent customer database connected yet**. Do not enter genuine customer data until secure Supabase setup is complete.
 
 For production, use a **dedicated Epoxy Creations Supabase project**, never the existing Jamrock or Ignite database. Run `supabase/schema.sql` in the new project after review, disable public signup, provision the owner in Supabase Auth, and configure these Vercel variables for the production environment:
 
@@ -30,6 +30,10 @@ For production, use a **dedicated Epoxy Creations Supabase project**, never the 
 **Never paste a Supabase secret key, service role key or database password into `VITE_` variables or the repo.**
 
 After setting up Auth and the schema, verify login, permissions, create/edit lead, add/edit service area, ZIP auto-match, override area, schedule, reorder, refresh persistence, and test an unauthorized second user before introducing real client records.
+
+### Verified email leads
+
+An **external private CSV** of 59 genuine Epoxy Creations inquiries (August 14 to October 21, 2026) was prepared from authorized Gmail access. This file **must never be committed** to this public GitHub repository. Once the dedicated database is configured, sign in and use **Settings → Import customer inquiries** to select the CSV. The importer deduplicates by source Gmail message ID, stores project details and ZIP codes, and sets all historical records to `imported` / `Imported · review` rather than assuming they have not been contacted. The CSV remains in the conversation artifact, not in Vercel or GitHub.
 
 ## Design
 
