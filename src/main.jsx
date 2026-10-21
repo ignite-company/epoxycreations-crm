@@ -94,6 +94,25 @@ function csvDownload(rows,filename){
   const url=window.URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
   const a=document.createElement("a");a.href=url;a.download=filename;a.click();window.URL.revokeObjectURL(url);
 }
+
+function parseLeadCSV(csv) {
+ const rows=[];let row=[],cell="",quoted=false;
+ const src=csv.replace(/^\uFEFF/,"");
+ for(let i=0;i<src.length;i++){
+  const ch=src[i];
+  if(ch==='"'){if(quoted&&src[i+1]==='"'){cell+='"';i++;}else quoted=!quoted;}
+  else if(ch===","&&!quoted){row.push(cell);cell="";}
+  else if((ch==="\n"||ch==="\r")&&!quoted){if(ch==="\r"&&src[i+1]==="\n")i++;row.push(cell);if(row.some(x=>x.trim()))rows.push(row);row=[];cell="";}
+  else cell+=ch;
+ }
+ if(quoted)throw Error("CSV contains an unclosed quote.");
+ row.push(cell);if(row.some(x=>x.trim()))rows.push(row);
+ const headers=(rows.shift()||[]).map(x=>x.trim().toLowerCase());
+ const required=["name","phone","email","source_message_id","received_at"];
+ for(const col of required)if(!headers.includes(col))throw Error("Missing required CSV column: "+col);
+ return rows.map(values=>Object.fromEntries(headers.map((h,i)=>[h,(values[i]||"").trim()])));
+}
+
 function Brand({ compact=false }){
  return <div className={"brand "+(compact?"brand-compact":"")}>
   <div className="brand-logo"><img src={MARK} alt="Epoxy Creations logo"/></div>
@@ -191,7 +210,7 @@ function App(){
   return recordFilter==="scheduled"?j.stage==="booked":j.stage==="completed";
  });
  const activeJobs=jobs.filter(j=>j.stage!=="lost");
- const newLeads=jobs.filter(j=>j.stage==="new").length;
+ const newLeads=jobs.filter(j=>j.stage==="new"||j.stage==="imported").length;
  const estimates=jobs.filter(j=>j.stage==="estimate_sent").length;
  const booked=jobs.filter(j=>j.stage==="booked").length;
  const revenue=jobs.filter(j=>j.stage==="completed").reduce((s,j)=>s+Number(j.final_amount??j.estimate_amount??0),0);
@@ -204,6 +223,7 @@ function App(){
  const upcomingJobs=jobs.filter(j=>j.stage==="booked"&&j.scheduled_at).sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at));
  function changeTab(id){setTab(id);setMobileNav(false);setQuery("");setSelectedDay(null);}
  function openModal(type,data={}){
+  if(!connected){setToast("Secure customer storage must be connected before creating records.");return;}
   setError("");setForm(data);setModal(type);
  }
  function openFollowUpFromLead(job){
@@ -292,6 +312,58 @@ function App(){
    }catch(e){setError(e.message||"Unable to reorder stops");}
  }
  function resetDemo(){if(!connected){setContacts([]);setJobs([]);setTasks([]);setAreas([]);setToast("Preview records cleared");}}
+
+ async function importLeadsCsv(file) {
+   if(!file)return;
+   if(!connected||!session||!workspace){setError("Connect a private Epoxy Creations database and sign in before importing customer data.");return;}
+   setImporting(true);setImportReport("");setError("");
+   try{
+     const rows=parseLeadCSV(await file.text());
+     if(rows.length>500)throw Error("Import a maximum of 500 leads at once.");
+     const knownSourceIds=new Set(jobs.map(j=>j.lead_details?.source_message_id).filter(Boolean));
+     const byEmail=new Map(contacts.filter(c=>c.email).map(c=>[c.email.toLowerCase(),c]));
+     const byPhone=new Map(contacts.filter(c=>c.phone).map(c=>[c.phone.replace(/\D/g,""),c]));
+     let imported=0,skipped=0;
+     for(const row of rows){
+       if(!row.name||!row.email||!row.source_message_id||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(row.email)){skipped++;continue;}
+       if(knownSourceIds.has(row.source_message_id)){skipped++;continue;}
+       const phone=(row.phone||"").replace(/\D/g,"");
+       let contact=byEmail.get(row.email.toLowerCase())||(phone?byPhone.get(phone):null);
+       if(!contact){
+         const add=await db.from("contacts").insert({
+           workspace_id:workspace.workspace_id,
+           name:row.name,phone:row.phone||"",email:row.email,
+           address:row.street_address||row.zip||"",notes:""
+         }).select().single();
+         if(add.error)throw Error("Contact "+row.name+": "+add.error.message);
+         contact=add.data;byEmail.set(row.email.toLowerCase(),contact);if(phone)byPhone.set(phone,contact);
+       }
+       const details={
+         zip:row.zip||"",finish_type:row.finish_type||"",approx_size:row.approx_size||"",
+         timeline:row.timeline||"",received_at:row.received_at||"",
+         source_message_id:row.source_message_id,gmail_source_url:row.gmail_source_url||""
+       };
+       const received=row.received_at&&/^\d{4}-\d{2}-\d{2}$/.test(row.received_at)?row.received_at+"T12:00:00.000Z":new Date().toISOString();
+       const addJob=await db.from("jobs").insert({
+         workspace_id:workspace.workspace_id,contact_id:contact.id,
+         service:row.project_type||"Epoxy flooring inquiry",
+         source:row.lead_source||"Email inquiry",
+         pickup_address:row.street_address||"",stage:"imported",
+         route_zone:"",visit_order:null,
+         estimate_amount:null,final_amount:null,scheduled_at:null,
+         notes:"Historical inquiry imported from email. Contact and booking status not yet verified.",
+         lead_details:details,created_at:received
+       }).select().single();
+       if(addJob.error)throw Error("Lead "+row.name+": "+addJob.error.message);
+       knownSourceIds.add(row.source_message_id);imported++;
+     }
+     await reload();
+     setImportReport("Imported "+imported+" lead"+(imported===1?"":"s")+". Skipped "+skipped+" duplicate or incomplete record"+(skipped===1?"":"s")+".");
+     setToast("Email lead import complete");
+   }catch(e){setError(e.message||"Import could not be completed.");}
+   finally{setImporting(false);}
+ }
+
  function exportJobs(){
   csvDownload([["Contact","Phone","Service","Source","Stage","Estimate","Final amount","Scheduled","Notes"],...jobs.map(j=>[person(j.contact_id)?.name,person(j.contact_id)?.phone,j.service,j.source,stageInfo(j.stage).label,j.estimate_amount,j.final_amount,j.scheduled_at,j.notes])],"epoxy-creations-jobs.csv");
  }
@@ -345,12 +417,12 @@ function App(){
    </nav><div className="sidebar-bottom"><div className="side-help"><div className="side-help-icon"><Truck size={18}/></div><b>Built for Epoxy Creations</b><span>Less admin. More jobs done.</span></div><div className="side-profile"><div className="profile-avatar">J</div><div><b>Epoxy Creations</b><span>Service territories</span></div><ShieldCheck size={16}/></div></div></aside>
    <div className="main-shell"><header className="topbar"><div className="top-left"><button className="mobile-menu icon-btn" onClick={()=>setMobileNav(true)} aria-label="Open navigation"><Menu size={22}/></button><div className="breadcrumb">Epoxy Creations <ChevronRight size={15}/> <b>{TABS.find(t=>t.id===tab)?.label}</b></div></div><div className="top-right"><span className="today-date">{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span><div className="profile-avatar profile-small">J</div></div></header>
     <main className="page">
-     {!connected&&<div className="demo-banner"><AlertCircle size={17}/><div><b>Preview workspace</b><span>Sample contacts and browser-only data. Not ready for actual client records until secure database setup.</span></div><button onClick={()=>changeTab("settings")}>Setup details <ArrowRight size={14}/></button></div>}
+     {!connected&&<div className="demo-banner"><AlertCircle size={17}/><div><b>Preview workspace</b><span>All sample records have been removed. Secure database setup is required to load real customer leads.</span></div><button onClick={()=>changeTab("settings")}>Setup details <ArrowRight size={14}/></button></div>}
      {error&&<div className="error-banner"><AlertCircle size={17}/>{error}<button onClick={()=>setError("")} aria-label="Dismiss"><X size={16}/></button></div>}
      <div className="page-heading"><div><div className="eyebrow">EPOXY CREATIONS COMMAND CENTER</div><h1>{heading[0]}</h1><p>{heading[1]}</p></div><div className="heading-actions">{tab==="jobs"&&<button className="btn btn-outline" onClick={exportJobs}><Download size={17}/> Export</button>}{(tab==="dashboard"||tab==="pipeline")&&connected&&<button className="btn btn-outline" onClick={reload}><RotateCcw size={16}/> Refresh</button>}{tab!=="settings"&&tab!=="jobs"&&<button className="btn btn-primary" onClick={()=>openModal("lead",{source:"Website"})}><Plus size={18}/> New lead</button>}</div></div>
      {tab==="dashboard"&&<div className="content-stack">
        <div className="metric-grid">
-        <div className="metric-card"><div className="metric-top"><span>New leads</span><div className="metric-icon blue"><Users size={19}/></div></div><strong>{newLeads}</strong><small>Awaiting first contact</small></div>
+        <div className="metric-card"><div className="metric-top"><span>New leads</span><div className="metric-icon blue"><Users size={19}/></div></div><strong>{newLeads}</strong><small>New or imported, needs review</small></div>
         <div className="metric-card"><div className="metric-top"><span>Open estimates</span><div className="metric-icon orange"><ClipboardList size={19}/></div></div><strong>{estimates}</strong><small>Ready for follow-up</small></div>
         <div className="metric-card"><div className="metric-top"><span>Booked jobs</span><div className="metric-icon green"><Truck size={19}/></div></div><strong>{booked}</strong><small>Scheduled or pending date</small></div>
         <div className="metric-card"><div className="metric-top"><span>Completed job value</span><div className="metric-icon green"><DollarSign size={19}/></div></div><strong>{money(revenue)}</strong><small>Recorded completed jobs, all time</small></div>
@@ -441,9 +513,23 @@ function App(){
        <p className="area-footnote"><CircleHelp size={15}/> ZIP matching suggests a service area, not mileage or traffic. Use the Maps links for real driving estimates. Route stop order is manual, not automatic route optimization.</p>
      </div>}
      {tab==="settings"&&<div className="settings-grid">
+
+      <section className="panel settings-panel">
+        <div className="panel-top"><div><h2>Import customer inquiries</h2><p>Upload the Epoxy Creations email-leads CSV after connecting secure storage.</p></div></div>
+        <div className="import-content">
+          <p>Duplicates are checked using original email message IDs. Customer details and project answers stay inside the private business workspace. Imported leads are marked <b>Imported · review</b>, not automatically qualified or booked.</p>
+          <label className={"btn "+(connected&&session?"btn-primary":"btn-outline")}>
+            <Download size={16}/> {importing?"Importing…":"Choose verified lead CSV"}
+            <input type="file" accept=".csv,text/csv" disabled={!connected||!session||importing} style={{display:"none"}} onChange={e=>{importLeadsCsv(e.target.files?.[0]);e.target.value="";}}/>
+          </label>
+          {!connected&&<p className="import-warning"><ShieldCheck size={16}/> Customer data cannot be imported until an isolated Epoxy Creations database is configured. No files or contact details are uploaded in preview mode.</p>}
+          {importReport&&<p className="import-success">{importReport}</p>}
+        </div>
+      </section>
+
       <section className="panel settings-panel"><div className="panel-top"><div><h2>Business workspace</h2><p>Personalized for your crew</p></div></div><div className="setting-business"><img src={LOGO} alt="Epoxy Creations logo"/><div><b>Epoxy Creations LLC</b><span>Service territories</span><span>Custom workspace by Ignite Co.</span></div></div><div className="setting-detail"><span>Workspace</span><b>{workspace?.workspaces?.name||"Epoxy Creations Command Center"}</b></div><div className="setting-detail"><span>Data storage</span><b>{connected?"Private Supabase database":"Browser-only preview"}</b></div>{connected&&<button className="btn btn-outline" onClick={async()=>{await db.auth.signOut();}}><LogOut size={16}/> Sign out</button>}</section>
       <section className="panel settings-panel"><div className="panel-top"><div><h2>Integrations</h2><p>Bring the platforms you already use together</p></div></div><div className="integration-row"><div className="integration-icon"><CalendarDays size={21}/></div><div><b>Google Calendar</b><span>Two-way sync not connected</span></div><a href="https://calendar.google.com/" target="_blank" rel="noreferrer">Open <ExternalLink size={15}/></a></div><div className="integration-row"><div className="integration-icon"><Star size={21}/></div><div><b>Google Business Profile</b><span>Reviews and profile API not connected</span></div><a href="https://business.google.com/" target="_blank" rel="noreferrer">Open <ExternalLink size={15}/></a></div><div className="integration-row"><div className="integration-icon"><Link2 size={21}/></div><div><b>Epoxy Creations website forms</b><span>Automatic lead capture not connected</span></div><span className="soon">Planned</span></div></section>
-      <section className="panel settings-panel"><div className="panel-top"><div><h2>Data & privacy</h2><p>Your contacts and job history belong to Epoxy Creations</p></div></div><div className="privacy-text"><ShieldCheck size={20}/><span>{connected?"CRM records are protected by sign-in and workspace row-level access policies.":"This preview stores changes only in this browser. Do not enter actual customer details until the secure database is configured."}</span></div><button onClick={exportJobs} className="btn btn-outline"><Download size={16}/> Export jobs as CSV</button>{!connected&&<button onClick={resetDemo} className="btn btn-quiet"><RotateCcw size={16}/> Reset preview records</button>}</section>
+      <section className="panel settings-panel"><div className="panel-top"><div><h2>Data & privacy</h2><p>Your contacts and job history belong to Epoxy Creations</p></div></div><div className="privacy-text"><ShieldCheck size={20}/><span>{connected?"CRM records are protected by sign-in and workspace row-level access policies.":"This preview stores changes only in this browser. Do not enter actual customer details until the secure database is configured."}</span></div><button onClick={exportJobs} className="btn btn-outline"><Download size={16}/> Export jobs as CSV</button></section>
      </div>}
     </main>
    </div>
