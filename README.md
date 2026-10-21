@@ -1,49 +1,36 @@
 # Epoxy Creations | Command Center
 
-A custom navy-and-white CRM for **Epoxy Creations LLC**, adapted from the Jamrock CRM structure and expanded around service territories and routing.
+Custom navy-and-white CRM for Epoxy Creations LLC, modeled on Jamrock's workflows with added service territory planning.
 
-## What is built
+## October 21, 2026 demo
 
-- Overview with new leads, open estimates, booked jobs and completed revenue.
-- Lead pipeline, contacts, estimates, jobs and tasks.
-- Calendar with clickable days, job-site addresses and individual appointments.
-- Dedicated **Service Areas** page for configurable regions. Define a name, comma-separated ZIP codes and optional starting address.
-- Automatic ZIP matching of job addresses to service areas, plus manual per-job override.
-- Daily stop planner filtered by date and territory. Reorder stops manually and save the order.
-- Direct Google Maps links to check actual driving distance/time from a saved starting address to a job site.
-- Multi-stop Google Maps directions with up to 9 addressable stops in the selected territory.
-- CSV export, mobile-responsive design and Epoxy Creations branding derived from supplied logo.
+- **Live environment:** https://epoxycreations-crm.vercel.app
+- **Storage:** Existing Ignite Supabase project, `ujvuqbgheewbyvfusqvz`, within Ignite's Supabase organization.
+- **Data isolation:** Dedicated `public.epoxy_*` tables, separate from Ignite's existing CRM/finance tables and from Jamrock.
+- **Authorized accounts:** The existing verified Ignite owner and Epoxy client portal accounts are added to the Epoxy workspace. Supabase Auth login is required. Row Level Security limits reads/writes to Epoxy workspace members; anonymous access is revoked.
+- **Imported content:** 10 genuine Epoxy Creations Facebook ad inquiries, received Oct 8 to Oct 21, 2026. Saved directly into private database as `Imported · review`, with original submission timestamps, names, contact information, ZIP codes, requested flooring type/finish/size/timeline and Gmail source message references. **No demo data is committed to the public Git repository.**
+- **No fictional sample leads or zones.** Leads have ZIPs only where full street addresses were not provided. CRM never invents street addresses, quotes, contact status or bookings.
+- **Not automatic email sync:** Additional leads require an authorized import through the Settings CSV workflow.
 
-### Routing limitations
+## Features
 
-The app organizes leads by ZIP and saved manual stop order. It **does not automatically optimize travel time**, calculate live mileage, or integrate a paid routing API. Google Maps links are used for actual traffic-aware route checking. ZIP groups are suggestions, not guaranteed nearby travel time.
+- Overview with new and imported inquiries, open estimates, booked jobs, completed revenue
+- Stage-based pipeline, contacts, jobs, quotes, reminders and calendar
+- Custom service areas matched to lead ZIPs, with editable per-job assignment
+- Manual date/territory planning, stop order and Google Maps multi-stop route links
+- Editable notes, project details, lead intake date and original source email
 
-## Current environment
+## Running locally
 
-The Vercel app shows an **empty preview** when no Supabase public browser configuration is provided. All fictional lead records and previous local demo records were removed. There is **no persistent customer database connected yet**. Do not enter genuine customer data until secure Supabase setup is complete.
+```bash
+npm install
+npm run dev
+```
 
-For production, use a **dedicated Epoxy Creations Supabase project**, never the existing Jamrock or Ignite database. Run `supabase/schema.sql` in the new project after review, disable public signup, provision the owner in Supabase Auth, and configure these Vercel variables for the production environment:
+Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (a public publishable key) for authenticated storage. These variables are set only for the Vercel production environment. Do not expose service-role keys or database passwords to the browser. Deploy using Vite with build `npm run build` and output `dist`.
 
-- `VITE_SUPABASE_URL`: Epoxy project's HTTPS URL.
-- `VITE_SUPABASE_ANON_KEY`: its public publishable key only.
+## Access and limitations
 
-**Never paste a Supabase secret key, service role key or database password into `VITE_` variables or the repo.**
+Use your **existing Ignite portal account** on the CRM login screen. If the account password is unavailable, it must be recovered through Supabase's supported password recovery flow. Existing Ignite portal authentication users are reused, but CRM records are separate.
 
-After setting up Auth and the schema, verify login, permissions, create/edit lead, add/edit service area, ZIP auto-match, override area, schedule, reorder, refresh persistence, and test an unauthorized second user before introducing real client records.
-
-### Verified email leads
-
-An **external private CSV** of 59 genuine Epoxy Creations inquiries (August 14 to October 21, 2026) was prepared from authorized Gmail access. This file **must never be committed** to this public GitHub repository. Once the dedicated database is configured, sign in and use **Settings → Import customer inquiries** to select the CSV. The importer deduplicates by source Gmail message ID, stores project details and ZIP codes, and sets all historical records to `imported` / `Imported · review` rather than assuming they have not been contacted. The CSV remains in the conversation artifact, not in Vercel or GitHub.
-
-## Design
-
-Deep navy, white canvas, restrained cyan accent matching the client's logo. Original vector-derived logo and compact mark are stored in `public/`.
-
-## Integrations not yet connected
-
-- Google Calendar two-way sync (CRM calendar is local to app).
-- Automated website lead webhook/inbox imports.
-- Traffic-distance APIs and automatic multi-stop optimization.
-- SMS, call tracking and other paid external services.
-
-The planned multi-stop Google Maps feature opens externally, with the limitations Google Maps imposes on shared waypoint URLs.
+This is a private operational demo, not a fully tested production system. Google Calendar two-way sync, automatic distance/time optimization, and inbox-based new-lead synchronization are not connected yet. Google Maps opens externally for live driving estimates.
