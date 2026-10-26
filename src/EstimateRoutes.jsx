@@ -65,17 +65,9 @@ export default function EstimateRoutes({db,workspaceId,jobs=[],contacts=[],onAdd
         .eq("workspace_id",workspaceId).eq("plan_date",date).maybeSingle();
       if(!active)return;
       if(plan.error){setError("We couldn't load your saved route. Please refresh.");setLoading(false);return;}
-      if(plan.data){
-        setStart(plan.data.start_address||"");
-        setSelected((plan.data.stop_ids||[]).slice(0,4));
-      }else{
-        const previous=await db.from("epoxy_estimate_routes").select("start_address")
-          .eq("workspace_id",workspaceId).neq("start_address","")
-          .order("updated_at",{ascending:false}).limit(1);
-        if(!active)return;
-        setStart(previous.data?.[0]?.start_address||"");
-        setSelected([]);
-      }
+      // Restore selected stops for this day, but never prefill the starting address.
+      // A prior customer's location should not appear as the next route's origin.
+      setSelected(plan.data ? (plan.data.stop_ids||[]).slice(0,4) : []);
       setLoading(false);
     }
     load();
@@ -141,13 +133,21 @@ export default function EstimateRoutes({db,workspaceId,jobs=[],contacts=[],onAdd
     </div>
 
     <section className="easy-step">
-      <div className="easy-step-header"><span className="easy-number">1</span><div><h3>Where are you starting?</h3><p>Enter the address you're leaving from. We'll remember it next time.</p></div></div>
+      <div className="easy-step-header"><span className="easy-number">1</span><div><h3>Where are you starting?</h3><p>Enter the address you're leaving from for this route.</p></div></div>
       <div className="easy-start-grid">
         <label className="easy-field easy-start"><span>Starting address</span><input
-          autoComplete="street-address" placeholder="123 Main St, Binghamton, NY"
+          autoComplete="off"
           value={start} onChange={e=>{setStart(e.target.value);setStatus("");}} /></label>
-        <label className="easy-field"><span>Day of estimates</span><input
-          type="date" value={date} onChange={e=>{setDate(e.target.value);setSearch("");setReorder(false);}} /></label>
+        <label className="easy-field easy-date-field"><span>Day of estimates</span>
+          <span className="easy-date-control">
+            <span className="easy-date-display" aria-hidden="true">
+              <span>{date ? new Date(date+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}) : "Choose a date"}</span>
+              <CalendarDays size={18}/>
+            </span>
+            <input className="easy-date-input" aria-label="Day of estimates"
+              type="date" value={date} onChange={e=>{setDate(e.target.value);setSearch("");setReorder(false);}} />
+          </span>
+        </label>
       </div>
     </section>
 
