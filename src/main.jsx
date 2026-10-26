@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import EstimateRoutes from "./EstimateRoutes.jsx";
+import "./mobile.css";
 
 const LOGO = "/logo.svg";
 const MARK = "/mark.svg";
@@ -479,7 +480,7 @@ function App(){
       </section>}
      {tab==="calendar"&&<div className="content-stack">
  <section className="panel calendar-panel">
-  <div className="panel-top"><div><h2>{month.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</h2><p>Select any day to see every scheduled job and its address.</p></div><div className="calendar-actions"><button className="icon-btn outline" aria-label="Previous month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()-1,1))}><ChevronLeft size={19}/></button><button className="btn btn-outline" onClick={()=>setMonth(new Date(new Date().getFullYear(),new Date().getMonth(),1))}>Today</button><button className="icon-btn outline" aria-label="Next month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()+1,1))}><ChevronRight size={19}/></button></div></div>
+  <div className="panel-top"><div><h2>{month.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</h2><p>Tap a date to see scheduled jobs and addresses.</p></div><div className="calendar-actions"><button className="icon-btn outline" aria-label="Previous month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()-1,1))}><ChevronLeft size={19}/></button><button className="btn btn-outline" onClick={()=>setMonth(new Date(new Date().getFullYear(),new Date().getMonth(),1))}>Today</button><button className="icon-btn outline" aria-label="Next month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()+1,1))}><ChevronRight size={19}/></button></div></div>
   <div className="calendar-grid">{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=><div key={d} className="weekday">{d}</div>)}{Array.from({length:Math.ceil((new Date(month.getFullYear(),month.getMonth(),1).getDay()+new Date(month.getFullYear(),month.getMonth()+1,0).getDate())/7)*7},(_,i)=>{
    const day=i-new Date(month.getFullYear(),month.getMonth(),1).getDay()+1;
    const cur=new Date(month.getFullYear(),month.getMonth(),day);
@@ -493,7 +494,7 @@ function App(){
    </button>;
   })}</div>
  </section>
- <div className="calendar-notice"><CalendarCheck2 size={20}/><div><b>Google Calendar is not connected yet</b><p>Scheduled jobs appear inside this CRM. Two-way Google Calendar syncing will require the client's Google authorization.</p></div><a href="https://calendar.google.com/" target="_blank" rel="noreferrer">Open Google Calendar <ExternalLink size={15}/></a></div>
+ <div className="calendar-notice"><CalendarCheck2 size={20}/><div><b>Google Calendar is not connected yet</b><p>Jobs scheduled here appear in this calendar. Google Calendar sync can be connected separately.</p></div><a href="https://calendar.google.com/" target="_blank" rel="noreferrer">Open Google Calendar <ExternalLink size={15}/></a></div>
  </div>}
 
 
@@ -551,7 +552,7 @@ function App(){
    {toast&&<div className="toast"><CircleCheck size={17}/>{toast}</div>}
    {selectedDay&&<div className="modal-overlay day-schedule-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelectedDay(null);}}>
     <div className="modal day-schedule-panel" role="dialog" aria-modal="true" aria-label={"Pickups for "+dayLabel(selectedDay)}>
-      <div className="modal-top"><div><div className="eyebrow">EPOXY CREATIONS JOB SCHEDULE</div><h2>{dayLabel(selectedDay)}</h2><p>{selectedDayJobs.length} scheduled {selectedDayJobs.length===1?"job site":"job sites"} for this day, ordered by time.</p></div><button className="icon-btn light" aria-label="Close day schedule" onClick={()=>setSelectedDay(null)}><X size={20}/></button></div>
+      <div className="modal-top"><div><div className="eyebrow">EPOXY CREATIONS JOB SCHEDULE</div><h2>{dayLabel(selectedDay)}</h2><p>{selectedDayJobs.length} {selectedDayJobs.length===1?"job":"jobs"} scheduled for this day.</p></div><button className="icon-btn light" aria-label="Close day schedule" onClick={()=>setSelectedDay(null)}><X size={20}/></button></div>
       <div className="day-schedule-list">{selectedDayJobs.length?selectedDayJobs.map(j=>{
         const c=person(j.contact_id),addr=addressForJob(j);
         return <div key={j.id} className="day-pickup">
