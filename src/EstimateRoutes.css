@@ -76,3 +76,37 @@
 .easy-address-cancel{background:#fff;color:#678197;border:1px solid #dbe5ed}
 .easy-address-error{flex-basis:100%;font-size:10px;color:#a34334}
 @media(max-width:600px){.easy-address-inline{padding-left:0}.easy-address-inline label{min-width:100%}.easy-address-inline button{flex:1}}
+
+
+/* A compact, genuinely responsive calendar control for iPhone Safari.
+   The native date input remains accessible and opens the system date picker,
+   while the visible label stays inside a fixed-width control. */
+.easy-start-grid,.easy-start-grid > *, .easy-date-field {min-width:0;max-width:100%}
+.easy-date-field {width:100%}
+.easy-date-control {
+  position:relative;display:block;width:100%;max-width:100%;min-width:0;
+  height:48px;border:1px solid #d9e4ed;border-radius:10px;background:#fff;
+  box-sizing:border-box;overflow:hidden;
+}
+.easy-date-control:focus-within {border-color:#19abc0;box-shadow:0 0 0 3px #08b4c01a}
+.easy-date-display {
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;padding:0 14px;box-sizing:border-box;pointer-events:none;
+  font-size:14px;font-weight:700;line-height:1.3;color:#183750;text-align:left;
+}
+.easy-date-display > span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.easy-date-display svg {flex:0 0 auto;color:#07889b}
+.easy-date-control .easy-date-input {
+  position:absolute;inset:0;z-index:1;display:block;box-sizing:border-box;
+  width:100%;height:100%;min-height:0;min-width:0;max-width:100%;
+  padding:0;margin:0;border:0;border-radius:0;background:transparent;
+  opacity:0;cursor:pointer;font-size:16px;
+}
+.easy-date-control .easy-date-input::-webkit-calendar-picker-indicator {
+  position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;
+}
+@media(max-width:700px) {
+  .easy-start-grid {grid-template-columns:minmax(0,1fr)}
+  .easy-date-control {height:48px;width:100%;max-width:100%}
+  .easy-date-display {padding:0 13px;font-size:15px}
+}
