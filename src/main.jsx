@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import EstimateRoutes from "./EstimateRoutes.jsx";
+import FollowUpCenter from "./FollowUpCenter.jsx";
 import "./mobile.css";
 
 const LOGO = "/logo.svg";
@@ -34,12 +35,12 @@ const STAGES = [
 const TABS = [
   { id: "dashboard", label: "Home", icon: LayoutDashboard },
   { id: "pipeline", label: "Leads", icon: Kanban },
+  { id: "tasks", label: "Follow-ups", icon: ListTodo },
   { id: "estimates_route", label: "Plan estimates", icon: Route },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "jobs", label: "Jobs & quotes", icon: ClipboardList },
   { id: "customers", label: "Customers", icon: Users },
   { id: "areas", label: "Service areas", icon: MapPinned },
-  { id: "tasks", label: "Follow-ups", icon: ListTodo },
   { id: "settings", label: "Settings", icon: Settings }
 ];
 const FOLLOW_UP_CATEGORIES = [
@@ -379,7 +380,7 @@ function App(){
   jobs:["Jobs & estimates","Quotes and confirmed work, without the lead pipeline clutter."],
   customers:["Customers","Only customers with completed jobs appear here, with their job history."],
   calendar:["Job calendar","Know what is scheduled and what's coming up."],
-  tasks:["Follow-ups","Never forget to call, text or check in."],
+  tasks:["Follow-ups","See customer emails, replies and next steps in one place."],
   settings:["Workspace settings","Your business tools, integrations and information."]
  }[tab];
  function jobRow(j){
@@ -424,7 +425,7 @@ function App(){
     <main className="page">
      {!connected&&<div className="demo-banner"><AlertCircle size={17}/><div><b>Preview workspace</b><span>All sample records have been removed. Secure database setup is required to load real customer leads.</span></div><button onClick={()=>changeTab("settings")}>Setup details <ArrowRight size={14}/></button></div>}
      {error&&<div className="error-banner"><AlertCircle size={17}/>{error}<button onClick={()=>setError("")} aria-label="Dismiss"><X size={16}/></button></div>}
-     <div className="page-heading"><div><div className="eyebrow">EPOXY CREATIONS COMMAND CENTER</div><h1>{heading[0]}</h1><p>{heading[1]}</p></div><div className="heading-actions">{tab==="jobs"&&<button className="btn btn-outline" onClick={exportJobs}><Download size={17}/> Export</button>}{(tab==="dashboard"||tab==="pipeline")&&connected&&<button className="btn btn-outline" onClick={reload}><RotateCcw size={16}/> Refresh</button>}{tab!=="settings"&&tab!=="jobs"&&<button className="btn btn-primary" onClick={()=>openModal("lead",{source:"Website"})}><Plus size={18}/> New lead</button>}</div></div>
+     <div className="page-heading"><div><div className="eyebrow">EPOXY CREATIONS COMMAND CENTER</div><h1>{heading[0]}</h1><p>{heading[1]}</p></div><div className="heading-actions">{tab==="jobs"&&<button className="btn btn-outline" onClick={exportJobs}><Download size={17}/> Export</button>}{(tab==="dashboard"||tab==="pipeline")&&connected&&<button className="btn btn-outline" onClick={reload}><RotateCcw size={16}/> Refresh</button>}{tab!=="settings"&&tab!=="jobs"&&tab!=="tasks"&&<button className="btn btn-primary" onClick={()=>openModal("lead",{source:"Website"})}><Plus size={18}/> New lead</button>}</div></div>
      {tab==="dashboard"&&<div className="content-stack">
        <div className="metric-grid">
         <div className="metric-card"><div className="metric-top"><span>New leads</span><div className="metric-icon blue"><Users size={19}/></div></div><strong>{newLeads}</strong><small>New or imported, needs review</small></div>
@@ -433,7 +434,7 @@ function App(){
         <div className="metric-card"><div className="metric-top"><span>Completed job value</span><div className="metric-icon green"><DollarSign size={19}/></div></div><strong>{money(revenue)}</strong><small>Recorded completed jobs, all time</small></div>
        </div>
        <div className="dash-grid">
-        <section className="panel"><div className="panel-top"><div><h2>Needs your attention</h2><p>Follow-ups waiting on you</p></div><button className="text-action" onClick={()=>changeTab("tasks")}>View all <ArrowRight size={16}/></button></div><div>{openTasks.length?openTasks.slice(0,4).map(taskRow):<Empty icon={CircleCheck} title="You're all caught up" subtitle="Add a follow-up and it will appear here."/>}</div><div className="panel-foot"><button className="subtle-action" onClick={()=>openModal("task",{due_at:new Date().toISOString().slice(0,16)})}><Plus size={16}/> Add follow-up</button></div></section>
+        <section className="panel"><div className="panel-top"><div><h2>Needs your attention</h2><p>Follow-ups waiting on you</p></div><button className="text-action" onClick={()=>changeTab("tasks")}>View all <ArrowRight size={16}/></button></div><div>{openTasks.length?openTasks.slice(0,4).map(taskRow):<Empty icon={CircleCheck} title="No reminders added" subtitle="Email follow-ups have a separate status screen. Open Follow-ups to check whether automation is connected."/>}</div><div className="panel-foot"><button className="subtle-action" onClick={()=>openModal("task",{due_at:new Date().toISOString().slice(0,16)})}><Plus size={16}/> Add follow-up</button></div></section>
         <section className="panel"><div className="panel-top"><div><h2>Upcoming jobs</h2><p>Booked work on your schedule</p></div><button className="text-action" onClick={()=>changeTab("calendar")}>Calendar <ArrowRight size={16}/></button></div><div>{upcomingJobs.length?upcomingJobs.slice(0,4).map(j=><div key={j.id} className="schedule-row"><div className="schedule-date"><b>{new Date(j.scheduled_at).toLocaleDateString("en-US",{day:"2-digit"})}</b><span>{new Date(j.scheduled_at).toLocaleDateString("en-US",{month:"short"})}</span></div><div><b>{j.service}</b><span>{person(j.contact_id)?.name||"Customer"}</span></div><span className="schedule-time">{new Date(j.scheduled_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</span></div>):<Empty icon={CalendarDays} title="No jobs scheduled" subtitle="Book a job to see it here."/>}</div><div className="panel-foot"><button className="subtle-action" onClick={newJobForm} disabled={!contacts.length}><Plus size={16}/> Schedule a job</button></div></section>
        </div>
        <section className="panel"><div className="panel-top"><div><h2>Recent opportunities</h2><p>Your latest incoming jobs and estimates</p></div><button className="text-action" onClick={()=>changeTab("pipeline")}>Open pipeline <ArrowRight size={16}/></button></div><div className="jobs-list">{jobs.length?jobs.slice(0,5).map(jobRow):<Empty title="No leads yet" subtitle="Add your first lead to get started."/>}</div></section>
@@ -472,12 +473,14 @@ function App(){
          <div className="contact-footer"><span>{jobs.filter(j=>j.contact_id===c.id&&j.stage==="completed").length} completed jobs</span><button onClick={()=>openModal("job",{contact_id:c.id,service:"Epoxy flooring",stage:"booked",source:"Phone"})}>New job <Plus size={15}/></button></div>
        </div>)}{!filtered(completedCustomers,"contacts").length&&<div className="grid-empty"><Empty icon={Users} title={query?"No matching customers":"No completed customers yet"} subtitle={query?"Try another search.":"Once a lead reaches Completed in the pipeline, their profile will appear here. Leads stay in the pipeline."}/></div>}</div>
       </section>}
-     {tab==="tasks"&&<section className="panel list-panel">
-       <div className="panel-top"><div><h2>Follow-up center</h2><p>{openTasks.length} open reminders across your leads</p></div><button className="btn btn-outline" onClick={()=>openModal("task",{category:"follow_up",due_at:localDateTimeInput(Date.now()+DAY)})}><Plus size={16}/> New follow-up</button></div>
-       <div className="followup-tools"><div className="select-wrap"><Filter size={15}/><select aria-label="Filter follow-ups by category" value={taskCategoryFilter} onChange={e=>setTaskCategoryFilter(e.target.value)}><option value="all">All follow-up categories</option>{FOLLOW_UP_CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></div><div className="followup-count">{filteredOpenTasks.length} pending</div></div>
-       <div className="task-section-label">TO DO</div>{filteredOpenTasks.length?filteredOpenTasks.map(taskRow):<Empty icon={CircleCheck} title="Nothing pending in this category" subtitle="Choose another category or create a follow-up from a lead."/>}
-       <div className="task-section-label">COMPLETED FOLLOW-UPS</div>{filteredDoneTasks.length?filteredDoneTasks.map(taskRow):<div className="muted-row">Completed follow-ups will appear here.</div>}
-      </section>}
+     {tab==="tasks"&&<FollowUpCenter
+       db={db} workspaceId={workspace?.workspace_id} jobs={jobs} contacts={contacts} tasks={tasks}
+       onAddReminder={openFollowUpFromLead}
+       onEditReminder={t=>openModal("task",{...t,due_at:localDateTimeInput(t.due_at||Date.now())})}
+       onCompleteReminder={toggleTask}
+       onOpenLead={editJob}
+       onRefresh={reload}
+     />}
      {tab==="calendar"&&<div className="content-stack">
  <section className="panel calendar-panel">
   <div className="panel-top"><div><h2>{month.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</h2><p>Tap a date to see scheduled jobs and addresses.</p></div><div className="calendar-actions"><button className="icon-btn outline" aria-label="Previous month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()-1,1))}><ChevronLeft size={19}/></button><button className="btn btn-outline" onClick={()=>setMonth(new Date(new Date().getFullYear(),new Date().getMonth(),1))}>Today</button><button className="icon-btn outline" aria-label="Next month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()+1,1))}><ChevronRight size={19}/></button></div></div>
