@@ -12,8 +12,8 @@ import {
 import "./styles.css";
 import EstimateRoutes from "./EstimateRoutes.jsx";
 import FollowUpCenter from "./FollowUpCenter.jsx";
-import "./easy.css";
 import "./mobile.css";
+import "./easy.css";
 
 const LOGO = "/logo.svg";
 const MARK = "/mark.svg";
