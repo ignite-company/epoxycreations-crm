@@ -1,0 +1,46 @@
+/* Simple, readable controls for a mixed-age team. Main workflow remains unchanged. */
+.sidebar{overflow-y:auto}
+.sidebar .side-help{display:none}
+.sidebar .side-label{font-size:12px;letter-spacing:.8px;color:#afc4d4}
+.sidebar .side-label-secondary{margin-top:20px}
+.nav-link{min-height:52px;height:auto;padding:10px 12px;font-size:15px;line-height:1.3;border-radius:11px;gap:11px}
+.nav-link svg{flex-shrink:0}.sidebar-bottom{padding:10px 0 16px}
+.page-heading h1{font-size:clamp(28px,3vw,36px);color:#173147}
+.page-heading p{font-size:16px;color:#526d7d}
+.page .eyebrow{color:#176b7c;font-size:11px}
+.topbar .breadcrumb{font-size:14px;color:#4d6372}.topbar .breadcrumb b{color:#16394e}.today-date{font-size:14px;color:#4a6371}
+.page .btn{min-height:46px;height:auto;font-size:15px;line-height:1.3;padding:11px 15px}
+.page button,.page input,.page select,.page textarea{touch-action:manipulation}
+.page input,.page select,.page textarea{font-size:16px;min-height:44px;max-width:100%}
+.page textarea{min-height:98px}
+.panel .panel-top h2,.page .section-heading h2{font-size:21px}
+.panel .panel-top p,.page .muted-row,.page .empty-state p{font-size:15px;line-height:1.55;color:#556c7a}
+.page .metric-card span{font-size:15px}.page .metric-card small{font-size:14px;line-height:1.45}
+.page .text-action,.page .subtle-action{font-size:15px;min-height:44px}
+.page .pipe-card .pipe-person{font-size:17px;line-height:1.35}
+.page .pipe-card span,.page .pipe-card p,.page .pipe-card button{font-size:14px;line-height:1.5}
+.page .pipe-card select{min-height:44px;font-size:14px}
+.page .pipe-column{min-width:260px}
+.page .calendar-panel .cal-day{min-height:93px}
+.page .calendar-panel .date-num{font-size:16px}
+.page .task-row,.page .job-row,.page .work-record{line-height:1.5}
+.page .task-header b,.page .job-main .link-title{font-size:16px}
+.page .task-body>span,.page .job-main span,.page .contact-card .contact-meta{font-size:14px}
+.page .task-latest-note{font-size:15px}
+.page .modal{max-width:min(96vw,680px);max-height:90vh;overflow-y:auto}
+.page .modal label{font-size:15px}
+.page button:focus-visible,.page input:focus-visible,.page select:focus-visible,.page textarea:focus-visible,.sidebar button:focus-visible{outline:3px solid #e49b2c;outline-offset:3px}
+@media(max-width:800px){
+ .page{padding:24px 16px 80px}
+ .page-heading{align-items:flex-start}
+ .page-heading h1{font-size:28px}
+ .topbar{padding:0 16px}
+ .page .calendar-panel .cal-day{min-height:72px}
+}
+@media(max-width:520px){
+ .page-heading{flex-wrap:wrap}
+ .page-heading .heading-actions{width:100%}
+ .page-heading .heading-actions .btn{flex:1}
+ .page .metric-card small{font-size:13px}
+ .page .pipe-column{min-width:260px}
+}
