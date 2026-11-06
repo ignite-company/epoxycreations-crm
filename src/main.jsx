@@ -12,6 +12,7 @@ import {
 import "./styles.css";
 import EstimateRoutes from "./EstimateRoutes.jsx";
 import FollowUpCenter from "./FollowUpCenter.jsx";
+import "./easy.css";
 import "./mobile.css";
 
 const LOGO = "/logo.svg";
@@ -418,9 +419,11 @@ function App(){
  if(connected&&loading&& !workspace)return <div className="loading-page">Loading your workspace…</div>;
  return <div className="app-shell">
    {mobileNav&&<div className="nav-scrim" onClick={()=>setMobileNav(false)}/>}
-   <aside className={"sidebar "+(mobileNav?"sidebar-open":"")}><div className="side-header"><Brand/><button className="mobile-close icon-btn" onClick={()=>setMobileNav(false)}><X size={20}/></button></div><div className="side-label">WORKSPACE</div><nav className="side-nav">
-   {TABS.map(t=><button key={t.id} onClick={()=>changeTab(t.id)} className={"nav-link "+(tab===t.id?"selected":"")}><t.icon size={19} strokeWidth={2}/><span>{t.label}</span>{t.id==="tasks"&&openTasks.length>0&&<em>{openTasks.length}</em>}</button>)}
-   </nav><div className="sidebar-bottom"><div className="side-help"><div className="side-help-icon"><Truck size={18}/></div><b>Built for Epoxy Creations</b><span>Less admin. More jobs done.</span></div><div className="side-profile"><div className="profile-avatar">J</div><div><b>Epoxy Creations</b><span>Service territories</span></div><ShieldCheck size={16}/></div></div></aside>
+   <aside className={"sidebar "+(mobileNav?"sidebar-open":"")}><div className="side-header"><Brand/><button className="mobile-close icon-btn" onClick={()=>setMobileNav(false)}><X size={20}/></button></div>{[["START HERE",["dashboard","pipeline","tasks"]],["OTHER TOOLS",["calendar","jobs","customers","estimates_route","areas","settings"]]].map(([heading,ids])=><React.Fragment key={heading}>
+    <div className={"side-label"+(heading==="OTHER TOOLS"?" side-label-secondary":"")}>{heading}</div>
+    <nav className="side-nav" aria-label={heading}>
+    {TABS.filter(t=>ids.includes(t.id)).map(t=><button key={t.id} onClick={()=>changeTab(t.id)} className={"nav-link "+(tab===t.id?"selected":"")}><t.icon size={21} strokeWidth={2}/><span>{t.label}</span>{t.id==="tasks"&&openTasks.length>0&&<em>{openTasks.length}</em>}</button>)}
+    </nav></React.Fragment>)}<div className="sidebar-bottom"><div className="side-help"><div className="side-help-icon"><Truck size={18}/></div><b>Built for Epoxy Creations</b><span>Less admin. More jobs done.</span></div><div className="side-profile"><div className="profile-avatar">J</div><div><b>Epoxy Creations</b><span>Service territories</span></div><ShieldCheck size={16}/></div></div></aside>
    <div className="main-shell"><header className="topbar"><div className="top-left"><button className="mobile-menu icon-btn" onClick={()=>setMobileNav(true)} aria-label="Open navigation"><Menu size={22}/></button><div className="breadcrumb">Epoxy Creations <ChevronRight size={15}/> <b>{TABS.find(t=>t.id===tab)?.label}</b></div></div><div className="top-right"><span className="today-date">{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span><div className="profile-avatar profile-small">J</div></div></header>
     <main className="page">
      {!connected&&<div className="demo-banner"><AlertCircle size={17}/><div><b>Preview workspace</b><span>All sample records have been removed. Secure database setup is required to load real customer leads.</span></div><button onClick={()=>changeTab("settings")}>Setup details <ArrowRight size={14}/></button></div>}
