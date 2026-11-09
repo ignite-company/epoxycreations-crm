@@ -153,3 +153,20 @@
   .page .pipeline-board .pipe-column { flex-basis: min(83vw, 290px); }
   .pipeline-navigation-actions > span { display: none; }
 }
+
+/* Keep long lead backlogs within their lane instead of making the page thousands of pixels tall. */
+.page .pipeline-board { align-items: flex-start; }
+.page .pipeline-board .pipe-column {
+  align-self: flex-start; max-height: min(72vh, 760px);
+}
+.page .pipeline-board .pipe-items {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin; scrollbar-color: #c2d5df transparent;
+}
+.page .pipeline-board .pipe-items::-webkit-scrollbar { width: 7px; }
+.page .pipeline-board .pipe-items::-webkit-scrollbar-thumb { background: #c4d7e1; border-radius: 99px; }
+.page .pipeline-board .pipe-items::-webkit-scrollbar-track { background: transparent; }
+@media (max-width: 700px) {
+  .page .pipeline-board .pipe-column { max-height: min(62dvh, 640px); }
+}
