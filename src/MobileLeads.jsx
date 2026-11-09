@@ -52,7 +52,7 @@ export default function MobileLeads({ jobs = [], contacts = [], stages = [], onE
         return <article className={"ml-card"+(open?" ml-card-open":"")} key={job.id}>
           <div className="ml-card-main">
             <div className="ml-card-heading">
-              <div><h3>{displayName}</h3><p>{job.service||"Epoxy flooring"}</p></div>
+              <div><h3><button type="button" className="ml-name-link" onClick={()=>onEdit(job)}>{displayName} <ArrowUpRight size={14}/></button></h3><p>{job.service||"Epoxy flooring"}</p></div>
               <span className={"ml-stage ml-stage-"+(job.stage||"new")}>{stageName}</span>
             </div>
             <div className="ml-card-meta">
@@ -84,7 +84,7 @@ export default function MobileLeads({ jobs = [], contacts = [], stages = [], onE
             {contact.address&&<p className="ml-address"><strong>Address:</strong> {contact.address}</p>}
             {job.notes&&!/historical inquiry imported from email/i.test(job.notes)&&<p className="ml-note"><strong>Notes:</strong> {job.notes}</p>}
             <div className="ml-footer-actions">
-              <button type="button" onClick={()=>onEdit(job)}><ArrowUpRight size={16}/> Open full record</button>
+              <button type="button" onClick={()=>onEdit(job)}><ArrowUpRight size={16}/> Open customer</button>
               <button type="button" onClick={()=>onAddFollowUp(job)}><ListTodo size={16}/> Add follow-up</button>
             </div>
           </div>}

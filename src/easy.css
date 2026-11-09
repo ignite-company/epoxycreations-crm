@@ -220,3 +220,17 @@
   .ml-show-more{width:100%;display:flex;gap:6px;justify-content:center;align-items:center;margin-top:12px;min-height:44px;padding:9px 13px;background:#fff;border:1px solid #c5dce6;border-radius:10px;font-size:13px;color:#135f74;font-weight:760}
   .ml-empty{padding:25px 14px;border:1px dashed #cbdbe4;border-radius:12px;color:#657d8d;background:#fff;text-align:center;font-size:14px;line-height:1.5}
 }
+
+/* Business overview is secondary; the daily worklist comes first. */
+.dashboard-overview-toggle{width:100%;display:flex;gap:9px;align-items:center;justify-content:center;border:1px solid #d0e1e9;border-radius:11px;background:#fff;color:#246079;padding:12px;font-size:13px;font-weight:800;min-height:44px}
+.dashboard-overview-toggle svg{flex:0 0 auto}
+.pipeline-workflow-hint{background:#f3fafc;border:1px solid #d5e9ee;color:#4e7082;border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.5}
+.pipeline-workflow-hint strong{color:#195770}
+.side-extra-nav{margin:8px 0 0 12px;padding-left:8px;border-left:1px solid #355269}
+.side-extra-nav .nav-link{font-size:13px;min-height:44px}
+.page .ml-name-link{display:inline-flex;align-items:center;gap:5px;max-width:100%;border:0;background:none;padding:0;color:#123751;text-align:left;line-height:1.25;font-weight:800;font-size:17px;overflow-wrap:anywhere}
+.page .ml-name-link svg{flex:0 0 auto;color:#0699ae}
+@media(max-width:700px){
+ .pipeline-workflow-hint{padding:10px 12px}
+ .side-extra-nav .nav-link{font-size:14px}
+}
