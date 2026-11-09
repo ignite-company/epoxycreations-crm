@@ -462,7 +462,7 @@ function App(){
         {guideOpen&&<OnboardingGuide onNavigate={changeTab} onFinish={finishGuide}/>}
         <TodayPriorities jobs={jobs} contacts={contacts} tasks={tasks}
          onLead={openQuickLead} onTask={t=>openModal("task",{...t,due_at:localDateTimeInput(t.due_at||Date.now())})}
-         onComplete={toggleTask} onNavigate={changeTab}
+         onComplete={toggleTask} onNavigate={view=>{if(view==="estimates"){setRecordView("estimates");changeTab("jobs");}else changeTab(view);}}
          onNewReminder={()=>openModal("task",{due_at:localDateTimeInput(Date.now()+DAY)})}/>
         <button type="button" className="dashboard-overview-toggle" onClick={()=>setShowOverview(v=>!v)} aria-expanded={showOverview}>
           <Layers3 size={17}/> {showOverview?"Hide business overview":"Show business overview"} {showOverview?<ChevronDown size={16}/>:<ChevronRight size={16}/>}

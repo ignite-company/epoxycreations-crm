@@ -32,6 +32,7 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
  const [filter,setFilter]=useState("all");
  const [expanded,setExpanded]=useState(null);
  const [limit,setLimit]=useState(20);
+ const [manualLimit,setManualLimit]=useState(8);
  const load=async()=>{
   if(!db||!workspaceId)return;
   setLoading(true);setError("");
@@ -74,12 +75,12 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
  return <div className="fu-page">
    {mode==="customers"&&<section className="fu-section fu-manual" aria-label="Manual follow-up priorities">
     <div className="fu-manual-header"><div><h2>Reminders to handle</h2><p>{manualPending} open reminders. Mark one done after contacting the customer.</p></div><button type="button" onClick={()=>onNewReminder?.()}><ListTodo size={16}/> New reminder</button></div>
-    {manualTasks.length?manualTasks.slice(0,8).map(t=>{
+    {manualTasks.length?manualTasks.slice(0,manualLimit).map(t=>{
       const contact=byId.get(t.contact_id),overdue=t.due_at&&new Date(t.due_at).getTime()<Date.now();
       return <div className="fu-manual-item" key={t.id}><div><strong>{t.title}</strong><span className={overdue?"is-overdue":""}>{contact?.name||"Customer"} · {t.due_at?(overdue?"Overdue · ":"Due ")+day(t.due_at):"No due date"}</span></div>
        <button type="button" onClick={()=>onEditReminder?.(t)}>Edit</button><button type="button" onClick={()=>onCompleteReminder?.(t)}><CheckCircle2 size={14}/> Done</button></div>;
     }):<p className="fu-manual-empty">All clear. Add a reminder after your next customer conversation.</p>}
-    {manualPending>8&&<p className="fu-step-help">{manualPending-8} more reminders waiting. Finish these first, then return to the list.</p>}
+    {manualPending>manualLimit&&<button type="button" className="fu-button fu-button-more" onClick={()=>setManualLimit(n=>n+8)}>Show more reminders ({manualPending-manualLimit} remaining)</button>}
    </section>}
    {mode==="automation"&&<>
    <section className="fu-hero" aria-label="Email system status">

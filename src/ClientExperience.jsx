@@ -26,7 +26,7 @@ export function TodayPriorities({jobs=[],contacts=[],tasks=[],onLead,onTask,onCo
   <div className="today-counts">
    <button type="button" onClick={()=>onNavigate("tasks")}><span>Open reminders</span><strong>{pending.length}</strong><small>{overdue.length?overdue.length+" overdue":"View follow-ups"} <ArrowRight size={12}/></small></button>
    <button type="button" onClick={()=>onNavigate("pipeline")}><span>Leads to review</span><strong>{waiting.length}</strong><small>New or unreviewed <ArrowRight size={12}/></small></button>
-   <button type="button" onClick={()=>{onNavigate("jobs");}}><span>Estimates awaiting reply</span><strong>{estimates.length}</strong><small>Quotes to check <ArrowRight size={12}/></small></button>
+   <button type="button" onClick={()=>onNavigate("estimates")}><span>Estimates awaiting reply</span><strong>{estimates.length}</strong><small>Quotes to check <ArrowRight size={12}/></small></button>
    <button type="button" onClick={()=>onNavigate("calendar")}><span>Upcoming appointments</span><strong>{upcoming.length}</strong><small>Scheduled jobs <ArrowRight size={12}/></small></button>
   </div>
   <div className="today-work">
