@@ -103,7 +103,7 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
        return <article className="fu-lead" key={job.id}>
         <div className="fu-lead-main">
          <div className="fu-lead-copy"><h3>{contact.name||"Unnamed customer"}</h3><p>{clean(job.service)||"Epoxy flooring"} · {day(job.created_at)}</p><Status label={state.label} type={state.type}/></div>
-         <button type="button" className="fu-button fu-button-outline" onClick={()=>setExpanded(open?null:job.id)} aria-expanded={open}>{open?"Hide details":"View follow-up"}{open?<ChevronUp size={20}/>:<ChevronDown size={20}/>}</button>
+         <button type="button" className="fu-button fu-button-outline" onClick={()=>setExpanded(open?null:job.id)} aria-expanded={open}><span className="fu-view-long">{open?"Hide details":"View follow-up"}</span><span className="fu-view-short">{open?"Hide":"View"}</span>{open?<ChevronUp size={20}/>:<ChevronDown size={20}/>}</button>
         </div>
         {open&&<div className="fu-lead-expanded">
          <div className="fu-details"><h4>Customer's request</h4><div className="fu-detail-grid">

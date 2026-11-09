@@ -36,3 +36,44 @@
 .fu-actions{display:flex;flex-wrap:wrap;gap:10px}.fu-empty{text-align:center;padding:35px 20px;color:#526978}.fu-empty h3{color:#17384c;margin:10px 0 4px}.fu-empty p{margin:0;font-size:15px}.fu-button-more{width:100%;background:#f1f7f9;color:#115870;border:1px solid #a7c9d4;margin-top:14px}
 @media(max-width:980px){.fu-health,.fu-steps{grid-template-columns:1fr}.fu-page .fu-section-head{flex-wrap:wrap}}
 @media(max-width:620px){.fu-hero,.fu-section{padding:18px}.fu-hero-top,.fu-lead-main{flex-direction:column;align-items:stretch}.fu-hero h2{font-size:25px}.fu-lead-main .fu-button,.fu-hero-top .fu-button{width:100%}.fu-detail-grid{grid-template-columns:1fr}.fu-tools,.fu-reminder{flex-direction:column;align-items:stretch}.fu-select-label{justify-content:space-between}.fu-select-label select{flex:1;min-width:0}.fu-hero-top{gap:16px}.fu-page .fu-health{margin-top:16px}.fu-actions .fu-button{width:100%}.fu-message{padding-left:0}}
+
+/* Mobile follow-ups: show customers first, without a 300px-tall search field. */
+.fu-view-short{display:none}
+@media(max-width:620px){
+ .page .fu-page{gap:12px;min-width:0}
+ .fu-page > .fu-section[aria-label="Customer email and reminder activity"]{order:0}
+ .fu-page > .fu-hero{order:1}
+ .fu-page > .fu-alert{order:2}
+ .fu-page > .fu-section[aria-label="Planned sequence"]{order:3}
+ .fu-page .fu-section{min-width:0;padding:14px;border-radius:13px}
+ .fu-page .fu-section-head{margin-bottom:12px}
+ .fu-page .fu-section-head h2{font-size:19px;line-height:1.25}
+ .fu-page .fu-section-head p{font-size:12px}
+ .fu-page .fu-tools{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-bottom:12px;align-items:stretch}
+ .fu-page .fu-search{width:100%;min-width:0;min-height:46px;height:46px;flex:none;padding:0 11px;gap:8px;border:1px solid #b9ccd7;border-radius:10px;box-sizing:border-box}
+ .fu-page .fu-search svg{flex:0 0 auto;width:18px;height:18px;color:#477b91}
+ .fu-page .fu-search input{flex:1 1 auto;min-width:0;width:100%;height:44px;min-height:0;max-height:44px;margin:0;padding:0;border:0;box-shadow:none;background:transparent;font-size:16px;line-height:normal}
+ .fu-page .fu-select-label{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;font-size:13px;min-width:0}
+ .fu-page .fu-select-label select{height:44px;min-height:44px;max-width:100%;width:100%;min-width:0;padding:7px 30px 7px 11px;border-width:1px;font-size:14px}
+ .fu-page .fu-list{gap:8px}
+ .fu-page .fu-lead-main{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px}
+ .fu-page .fu-lead-copy{min-width:0}
+ .fu-page .fu-lead-copy h3{font-size:16px;line-height:1.3;overflow-wrap:anywhere}
+ .fu-page .fu-lead-copy p{font-size:12px;line-height:1.4;margin:0 0 7px;overflow-wrap:anywhere}
+ .fu-page .fu-status{font-size:11px;padding:5px 8px}
+ .fu-page .fu-lead-main .fu-button{width:auto;min-height:39px;height:auto;padding:7px 10px;border-width:1px;border-radius:8px;font-size:12px;white-space:nowrap;gap:5px;align-self:center}
+ .fu-page .fu-lead-main .fu-button svg{width:15px;height:15px}
+ .fu-page .fu-view-long{display:none}
+ .fu-page .fu-view-short{display:inline}
+ .fu-page .fu-lead-expanded{padding:12px}
+ .fu-page .fu-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .fu-page .fu-detail-grid span{font-size:13px}
+ .fu-page .fu-health{gap:8px}
+ .fu-page .fu-health>div{padding:11px}
+ .fu-page .fu-health strong{font-size:17px}
+ .fu-page .fu-hero{padding:16px}
+ .fu-page .fu-hero h2{font-size:22px}
+ .fu-page .fu-hero p{font-size:13px}
+ .fu-page .fu-steps{gap:8px}
+ .fu-page .fu-step{padding:12px}
+}
