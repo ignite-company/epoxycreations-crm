@@ -23,7 +23,7 @@ const emailStatus=(messages,connected)=>{
 };
 const Status=({label,type="muted"})=><span className={"fu-status fu-"+type}>{label}</span>;
 
-export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks=[],onAddReminder,onEditReminder,onCompleteReminder,onOpenLead,onRefresh}) {
+export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks=[],onAddReminder,onEditReminder,onCompleteReminder,onOpenLead,onRefresh,onNewReminder,mode="customers"}) {
  const [connection,setConnection]=useState(null);
  const [messages,setMessages]=useState([]);
  const [loading,setLoading]=useState(false);
@@ -69,8 +69,19 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
   return true;
  }).sort((a,b)=>new Date(b.job.created_at||0)-new Date(a.job.created_at||0));
  const remindersFor=id=>tasks.filter(t=>t.job_id===id);
- const manualPending=tasks.filter(t=>!t.completed).length;
+ const manualTasks=tasks.filter(t=>!t.completed).sort((a,b)=>new Date(a.due_at||0)-new Date(b.due_at||0));
+ const manualPending=manualTasks.length;
  return <div className="fu-page">
+   {mode==="customers"&&<section className="fu-section fu-manual" aria-label="Manual follow-up priorities">
+    <div className="fu-manual-header"><div><h2>Reminders to handle</h2><p>{manualPending} open reminders. Mark one done after contacting the customer.</p></div><button type="button" onClick={()=>onNewReminder?.()}><ListTodo size={16}/> New reminder</button></div>
+    {manualTasks.length?manualTasks.slice(0,8).map(t=>{
+      const contact=byId.get(t.contact_id),overdue=t.due_at&&new Date(t.due_at).getTime()<Date.now();
+      return <div className="fu-manual-item" key={t.id}><div><strong>{t.title}</strong><span className={overdue?"is-overdue":""}>{contact?.name||"Customer"} · {t.due_at?(overdue?"Overdue · ":"Due ")+day(t.due_at):"No due date"}</span></div>
+       <button type="button" onClick={()=>onEditReminder?.(t)}>Edit</button><button type="button" onClick={()=>onCompleteReminder?.(t)}><CheckCircle2 size={14}/> Done</button></div>;
+    }):<p className="fu-manual-empty">All clear. Add a reminder after your next customer conversation.</p>}
+    {manualPending>8&&<p className="fu-step-help">{manualPending-8} more reminders waiting. Finish these first, then return to the list.</p>}
+   </section>}
+   {mode==="automation"&&<>
    <section className="fu-hero" aria-label="Email system status">
      <div className="fu-hero-top"><div><p className="fu-eyebrow">FOLLOW-UP CONTROL CENTER</p><h2>Know exactly who was contacted.</h2><p>See every email, every reply, and what needs your attention.</p></div>
       <button className="fu-button fu-button-white" type="button" onClick={()=>{load();onRefresh?.();}} disabled={loading}><RefreshCw size={19}/>{loading?"Checking…":"Check for updates"}</button>
@@ -88,8 +99,9 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
     <div className="fu-steps">{STEPS.map(s=><div className="fu-step" key={s.step}><div className="fu-step-number">{s.step}</div><div><strong>{s.title}</strong><span>{s.when}</span><p>{s.help}</p></div></div>)}</div>
     <p className="fu-safe"><ShieldCheck size={18}/> Start with human approval of each AI-generated message. Only enable automatic sending after Jeremy approves the wording, sending rules, and opt-out handling.</p>
    </section>
-   <section className="fu-section" aria-label="Customer email and reminder activity">
-     <div className="fu-section-head"><div><h2>Customer follow-ups</h2><p>{jobs.length} lead records · {manualPending} manual reminders waiting</p></div></div>
+   </>}
+   {mode==="customers"&&<section className="fu-section" aria-label="Customer email and reminder activity">
+     <div className="fu-section-head"><div><h2>Customer follow-ups</h2><p>{jobs.length} lead records. Open a customer for reminders and email activity.</p></div></div>
      <div className="fu-tools">
        <label className="fu-search"><Search size={21}/><span className="fu-sr-only">Find a customer</span><input value={search} onChange={e=>{setSearch(e.target.value);setLimit(20);}} placeholder="Search customer name or project"/></label>
        <label className="fu-select-label">Show<select value={filter} onChange={e=>{setFilter(e.target.value);setLimit(20);}}><option value="all">All customers</option><option value="attention">Needs attention</option><option value="sent">Emails sent</option><option value="replies">Customer replies</option><option value="not_started">No emails yet</option></select></label>
@@ -114,13 +126,13 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
           </div>{notes&&!/historical inquiry imported/i.test(notes)&&<p className="fu-notes"><b>Customer notes:</b> {notes}</p>}
           <div className="fu-contact-links">{contact.email&&<a href={"mailto:"+contact.email}><Mail size={18}/> Email customer</a>}{contact.phone&&<a href={"tel:"+contact.phone}><Phone size={18}/> Call customer</a>}</div>
          </div>
-         <div className="fu-sequence"><h4>Email sequence and delivery</h4>
+         <details className="fu-email-history"><summary>Email delivery history (optional)</summary><div className="fu-sequence"><h4>Email sequence and delivery</h4>
           {STEPS.map(s=>{const m=history.find(x=>x.sequence_step===s.step);return <div className="fu-email-step" key={s.step}>
            <div className="fu-email-step-top"><span className="fu-step-number">{s.step}</span><strong>{s.title}</strong><Status label={m?(LABELS[m.status]||m.status):"Not started"} type={m?.status==="failed"?"bad":["sent","replied"].includes(m?.status)?"good":["pending_review","scheduled"].includes(m?.status)?"warn":"muted"}/></div>
            {m?<div className="fu-message"><p><b>{m.subject||"No subject yet"}</b></p>{m.body&&<div className="fu-message-body">{m.body}</div>}<small>{m.sent_at?"Sent "+day(m.sent_at):m.scheduled_at?"Planned "+day(m.scheduled_at):"Not sent"}{m.last_error?" · Problem: "+m.last_error:""}</small></div>
              :<p className="fu-step-help">No email has been generated or sent for this step.</p>}
           </div>;})}
-         </div>
+         </div></details>
          <div className="fu-reminders"><h4>Personal reminders</h4>
           {reminders.length?reminders.map(t=><div className="fu-reminder" key={t.id}><div><strong>{t.title}</strong><p>{t.completed?"Completed":"Due "+day(t.due_at)}</p>{t.notes&&<small>{t.notes}</small>}</div><div className="fu-reminder-actions"><button type="button" onClick={()=>onEditReminder?.(t)}>Edit</button><button type="button" onClick={()=>onCompleteReminder?.(t)}>{t.completed?"Reopen":"Mark done"}</button></div></div>)
           :<p className="fu-step-help">No personal reminders for this customer.</p>}
@@ -132,6 +144,6 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
       {!list.length&&<div className="fu-empty"><CheckCircle2 size={27}/><h3>No customers in this view</h3><p>Choose another filter or search for a different name.</p></div>}
      </div>
      {list.length>limit&&<button className="fu-button fu-button-more" type="button" onClick={()=>setLimit(n=>n+20)}>Show more customers ({list.length-limit} remaining)</button>}
-   </section>
+   </section>}
  </div>;
 }
