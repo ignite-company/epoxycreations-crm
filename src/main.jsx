@@ -13,6 +13,7 @@ import "./styles.css";
 import EstimateRoutes from "./EstimateRoutes.jsx";
 import FollowUpCenter from "./FollowUpCenter.jsx";
 import MobileLeads from "./MobileLeads.jsx";
+import {TodayPriorities,QuickLeadView,OnboardingGuide} from "./ClientExperience.jsx";
 import "./mobile.css";
 import "./easy.css";
 
@@ -26,7 +27,7 @@ const connected = Boolean(SUPABASE_URL && KEY);
 const db = connected ? createClient(SUPABASE_URL, KEY) : null;
 const DATA_TABLES={contacts:"epoxy_contacts",jobs:"epoxy_jobs",tasks:"epoxy_tasks",service_areas:"epoxy_service_areas"};
 const STAGES = [
-  { id: "imported", label: "Imported · review", color: "gray" },
+  { id: "imported", label: "Needs review", color: "gray" },
   { id: "new", label: "New lead", color: "blue" },
   { id: "contacted", label: "Contacted", color: "gray" },
   { id: "estimate_sent", label: "Estimate sent", color: "orange" },
@@ -40,7 +41,7 @@ const TABS = [
   { id: "tasks", label: "Follow-ups", icon: ListTodo },
   { id: "estimates_route", label: "Plan estimates", icon: Route },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
-  { id: "jobs", label: "Jobs & quotes", icon: ClipboardList },
+  { id: "jobs", label: "Jobs & estimates", icon: ClipboardList },
   { id: "customers", label: "Customers", icon: Users },
   { id: "areas", label: "Service areas", icon: MapPinned },
   { id: "settings", label: "Settings", icon: Settings }
@@ -143,6 +144,11 @@ function App(){
  const[loading,setLoading]=useState(connected);
  const[tab,setTab]=useState("dashboard");
  const[mobileNav,setMobileNav]=useState(false);
+ const[moreNavOpen,setMoreNavOpen]=useState(false);
+ const[quickLeadId,setQuickLeadId]=useState(null);
+ const[quickSaving,setQuickSaving]=useState(false);
+ const[guideOpen,setGuideOpen]=useState(false);
+ const[showOverview,setShowOverview]=useState(false);
  const[contacts,setContacts]=useState(()=>connected?[]:localRead("contacts"));
  const[jobs,setJobs]=useState(()=>connected?[]:localRead("jobs"));
  const[tasks,setTasks]=useState(()=>connected?[]:localRead("tasks"));
@@ -172,6 +178,7 @@ function App(){
  useEffect(()=>{if(!connected){localStorage.setItem("epoxy_demo_areas",JSON.stringify(areas));}},[areas]);
  useEffect(()=>{if(connected&&session)reload();if(connected&&!session){setContacts([]);setJobs([]);setTasks([]);setAreas([]);setWorkspace(null);setLoading(false);}},[session?.user?.id]);
  useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(""),3800);return()=>clearTimeout(t);},[toast]);
+ useEffect(()=>{if(session?.user?.id)setGuideOpen(localStorage.getItem("epoxy_guide_done_"+session.user.id)!=="true");},[session?.user?.id]);
  // Keep the open dashboard and pipeline fresh as new website forms arrive.
  useEffect(()=>{
    if(!connected||!session?.user?.id)return;
@@ -192,6 +199,9 @@ function App(){
   }catch(e){setError(e.message||"Could not load business records.");}finally{setLoading(false);}
  }
  const person=(id)=>contacts.find(c=>c.id===id);
+ const quickJob=jobs.find(j=>j.id===quickLeadId);
+ const extraNavIds=["customers","estimates_route","areas","settings"];
+ const extraNavActive=extraNavIds.includes(tab);
  const addressForJob=j=>{
   if(!j)return "";
   const own=(j.pickup_address||"").trim();
@@ -232,6 +242,8 @@ function App(){
  const completedCustomers=contacts.filter(c=>completedCustomerIds.has(c.id));
  const upcomingJobs=jobs.filter(j=>j.stage==="booked"&&j.scheduled_at).sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at));
  function changeTab(id){setTab(id);setMobileNav(false);setQuery("");setSelectedDay(null);}
+ function finishGuide(){if(session?.user?.id)localStorage.setItem("epoxy_guide_done_"+session.user.id,"true");setGuideOpen(false);}
+ function openQuickLead(job){setModal(null);setQuickLeadId(job.id);}
  function openModal(type,data={}){
   if(!connected){setToast("Secure customer storage must be connected before creating records.");return;}
   setError("");setForm(data);setModal(type);
@@ -280,6 +292,15 @@ function App(){
  async function setJobStage(job,stage){
   try{setError("");await upsert("jobs",{...job,stage},setJobs);if(connected)await reload();setToast("Job updated");}
   catch(e){setError(e.message||"Could not update job");}
+ }
+ async function saveQuickNote(job,notes){
+   setQuickSaving(true);setError("");
+   try{
+     await upsert("jobs",{...job,notes},setJobs);
+     if(connected)await reload();
+     setToast("Contact note saved");
+   }catch(e){setError(e.message||"Could not save note");}
+   finally{setQuickSaving(false);}
  }
  async function toggleTask(task){
   try{await upsert("tasks",{...task,completed:!task.completed},setTasks);if(connected)await reload();}
@@ -385,11 +406,11 @@ function App(){
   jobs:["Jobs & estimates","Quotes and confirmed work, without the lead pipeline clutter."],
   customers:["Customers","Only customers with completed jobs appear here, with their job history."],
   calendar:["Job calendar","Know what is scheduled and what's coming up."],
-  tasks:["Follow-ups","See customer emails, replies and next steps in one place."],
+  tasks:["Follow-ups","Your reminders and customer conversations in one place."],
   settings:["Workspace settings","Your business tools, integrations and information."]
  }[tab];
  function jobRow(j){
-  const c=person(j.contact_id);return <div className="job-row" key={j.id}><div className="avatar">{initials(c?.name)}</div><div className="job-main"><button className="link-title" onClick={()=>openModal("job",{...j,scheduled_at:j.scheduled_at?new Date(j.scheduled_at).toISOString().slice(0,16):""})}>{c?.name||"Customer"}</button><span>{j.service} <span className="mid-dot">·</span> {j.source||"Other"}</span><span>Received {leadReceived(j.created_at)} · {leadAge(j.created_at,now)}</span></div><div className="job-money">{j.estimate_amount==null?"No estimate":money(j.estimate_amount)}</div><Pill stage={j.stage}/><button className="icon-btn light" title="Edit job" onClick={()=>openModal("job",{...j,scheduled_at:j.scheduled_at?new Date(j.scheduled_at).toISOString().slice(0,16):""})}><ArrowUpRight size={17}/></button></div>;
+  const c=person(j.contact_id);return <div className="job-row" key={j.id}><div className="avatar">{initials(c?.name)}</div><div className="job-main"><button className="link-title" onClick={()=>openQuickLead(j)}>{c?.name||"Customer"}</button><span>{j.service} <span className="mid-dot">·</span> {j.source||"Other"}</span><span>Received {leadReceived(j.created_at)} · {leadAge(j.created_at,now)}</span></div><div className="job-money">{j.estimate_amount==null?"No estimate":money(j.estimate_amount)}</div><Pill stage={j.stage}/><button className="icon-btn light" title="Edit job" onClick={()=>openQuickLead(j)}><ArrowUpRight size={17}/></button></div>;
  }
  function taskRow(t){
   const c=person(t.contact_id);
@@ -400,7 +421,7 @@ function App(){
      <div className="task-header"><b>{t.title}</b><span className={"followup-tag followup-"+(t.category||"follow_up")}>{followCategory(t.category)}</span></div>
      <span>{c?.name?c.name+" · ":""}Due {fullDate(t.due_at)}</span>
      {t.notes&&<p className="task-latest-note"><strong>Latest note:</strong> {t.notes}</p>}
-     {job&&<button className="task-related-link" onClick={()=>editJob(job)}>Open lead <ArrowUpRight size={13}/></button>}
+     {job&&<button className="task-related-link" onClick={()=>openQuickLead(job)}>Open lead <ArrowUpRight size={13}/></button>}
     </div>
     <button className="icon-btn light" aria-label="Edit follow-up" onClick={()=>openModal("task",{...t,due_at:localDateTimeInput(t.due_at||Date.now())})}><Pencil size={15}/></button>
   </div>;
