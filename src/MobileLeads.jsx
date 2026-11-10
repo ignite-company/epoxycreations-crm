@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ArrowUpRight, ChevronDown, ChevronUp, Clock3, ListTodo, Mail, MapPin, Phone, Search } from "lucide-react";
+import { ArrowUpRight, CalendarDays, ChevronDown, ChevronUp, Clock3, ListTodo, Mail, MapPin, Phone, Search } from "lucide-react";
 
 // Mobile-first lead list. The desktop Kanban board remains unchanged.
 const fmtDate = value => value ? new Intl.DateTimeFormat("en-US", {
@@ -60,9 +60,13 @@ export default function MobileLeads({ jobs = [], contacts = [], stages = [], onE
               {detail.timeline&&<span><Clock3 size={13} aria-hidden="true"/> {detail.timeline}</span>}
               {!detail.zip&&!detail.timeline&&<span><Clock3 size={13} aria-hidden="true"/> Received {fmtDate(job.created_at)}</span>}
             </div>
+            {job.scheduled_at&&<div className={"ml-booking-label ml-booking-"+(job.appointment_type||"unknown")}>
+               <CalendarDays size={14}/> {job.appointment_type==="estimate"?"Estimate Visit":job.appointment_type==="job"?"Active Job":"Type not set"} · {new Date(job.scheduled_at).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}
+             </div>}
             <div className="ml-card-actions">
               {contact.phone&&<a href={"tel:"+contact.phone} className="ml-contact"><Phone size={16}/> Call</a>}
               {contact.email&&<a href={"mailto:"+contact.email} className="ml-contact"><Mail size={16}/> Email</a>}
+              <button type="button" className="ml-schedule" onClick={()=>onEdit(job)}><CalendarDays size={16}/> Schedule</button>
               <button type="button" className="ml-details-toggle" aria-expanded={open}
                 aria-label={(open?"Hide":"Show")+" details for "+displayName}
                 onClick={()=>setExpanded(open?null:job.id)}>
