@@ -234,3 +234,26 @@
  .pipeline-workflow-hint{padding:10px 12px}
  .side-extra-nav .nav-link{font-size:14px}
 }
+
+
+/* Calendar entries and mobile lead cards show booking type, not just Booked. */
+.appointment-editor{border:1px solid #cde5eb;border-radius:12px;background:#f4fafc;padding:15px;display:grid;gap:10px}
+.appointment-editor>strong{font-size:16px;color:#163f56}
+.appointment-editor>p{margin:0;color:#567588;font-size:13px;line-height:1.5}
+.appointment-editor>small{display:block;color:#336b7c;font-size:12px;line-height:1.45}
+.calendar-grid .cal-event-estimate{background:#dff5fc;border-left:3px solid #1599b6;color:#165b77}
+.calendar-grid .cal-event-job{background:#dff4e7;border-left:3px solid #30a56a;color:#175b43}
+.calendar-grid .cal-event-unknown{background:#fff0d7;border-left:3px solid #d9a039;color:#865d15}
+.day-pickup-info .appointment-tag{align-self:flex-start;display:inline-flex;width:max-content;max-width:100%;padding:5px 9px;border-radius:7px;font-weight:850;font-size:12px;line-height:1.3}
+.day-pickup-info .appointment-tag-estimate{background:#dff5fc;color:#165b77}
+.day-pickup-info .appointment-tag-job{background:#dff4e7;color:#175b43}
+.day-pickup-info .appointment-tag-unknown{background:#fff0d7;color:#865d15}
+.day-schedule-foot{gap:8px}
+.day-schedule-foot .btn{white-space:normal;line-height:1.3;text-align:center}
+.ml-card .ml-booking-label{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;max-width:100%;margin-top:10px;padding:6px 9px;border-radius:8px;font-size:12px;line-height:1.45;font-weight:700;overflow-wrap:anywhere}
+.ml-booking-label svg{flex:none}
+.ml-booking-estimate{background:#e3f7fc;color:#145d79}
+.ml-booking-job{background:#e2f6e9;color:#1a694b}
+.ml-booking-unknown{background:#fff1d9;color:#855e17}
+.page .ml-card-actions .ml-schedule{background:#0d91a7;color:#fff;border-color:#0d91a7;flex:1 1 auto}
+@media(max-width:700px){.appointment-editor{padding:12px}.day-schedule-foot .btn{min-height:44px}}
