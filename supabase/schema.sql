@@ -40,7 +40,7 @@ create table if not exists public.epoxy_jobs (
  pickup_address text not null default '',
  route_zone text not null default '',
  visit_order integer check(visit_order > 0),
- stage text not null default 'new' check(stage in ('imported','new','contacted','estimate_sent','booked','completed','lost')),
+ stage text not null default 'new' check(stage in ('imported','new','contacted','estimate_booked','estimate_sent','follow_up','booked','completed','lost')),
  estimate_amount numeric(12,2) check(estimate_amount>=0),
  final_amount numeric(12,2) check(final_amount>=0),
  scheduled_at timestamptz,

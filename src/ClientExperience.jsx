@@ -3,12 +3,14 @@ import { ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronLef
 import "./ClientExperience.css";
 
 const stageNext={
- new:"Call or email this customer. Schedule an estimate visit when ready. An estimate is not a booked job.",
- contacted:"Record the conversation, schedule an estimate, and prepare the quote. Only mark Job booked once the customer agrees.",
- estimate_sent:"Follow up on the quote. When the customer approves, schedule an Active Job.",
- booked:"The installation is confirmed. Verify the job date and address, then mark Completed when finished.",
- completed:"This job is finished. Keep the final value and notes accurate.",
- lost:"No further action is scheduled unless the customer contacts you again."
+ new:"New inquiry. Call or email the customer, then move to Contacted.",
+ contacted:"You've reached out. Schedule an estimate visit to move to Estimate Booked.",
+ estimate_booked:"The estimate visit is booked. Attend, prepare the quote, then move to Estimate Sent when sent.",
+ estimate_sent:"The quote has been sent. Move to Follow Up when you need to check on their decision.",
+ follow_up:"Follow up with the customer on their quote. If approved, schedule the installation and move to Job Booked.",
+ booked:"The installation is confirmed. Verify the job date, then mark Complete when the work is finished.",
+ completed:"The job is complete. Keep the final value and notes accurate.",
+ lost:"Opportunity lost. No further action unless the customer returns."
 };
 const money=value=>value==null?"Not quoted":new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(Number(value)||0);
 const dateText=value=>value?new Date(value).toLocaleDateString("en-US",{month:"short",day:"numeric"}):"Not scheduled";
@@ -88,7 +90,7 @@ export function QuickLeadView({job,contact={},stages=[],saving=false,onClose,onS
      <button type="button" className="quick-booking-save" disabled={saving||!bookingKind||!bookingTime} onClick={()=>onSchedule?.(job,bookingKind,bookingTime)}>
        <CalendarDays size={17}/>{saving?"Saving booking…":"Save to CRM calendar"}
      </button>
-     <p className="quick-booking-hint">Estimate Visit keeps this as a lead; Active Job moves it to Job booked. CRM appointments do not sync to Google Calendar yet.</p>
+     <p className="quick-booking-hint">Estimate Visit moves the lead to Estimate Booked. Active Job moves it to Job Booked. Both appear in the CRM calendar, not Google Calendar.</p>
    </div>
    <div className="quick-detail-grid">
     <div><span>Project</span><strong>{job.service||"Epoxy flooring"}</strong></div>
@@ -116,7 +118,7 @@ export function QuickLeadView({job,contact={},stages=[],saving=false,onClose,onS
 const guideSteps=[
  {title:"Review a new inquiry",body:"Open Leads. Facebook inquiries arrive in New Leads. Check the project and contact the customer, then update the status.",tab:"pipeline",cta:"Go to Leads"},
  {title:"Record your conversation",body:"Tap a customer's name, call or email them, then save a short note and update their status. You do not need the full edit form.",tab:"pipeline",cta:"View customers"},
- {title:"Plan the next action",body:"Schedule an Estimate Visit or Active Job directly from the lead. The calendar shows which type each booking is.",tab:"tasks",cta:"Open Follow-ups"}
+ {title:"Plan the next action",body:"Schedule an Estimate Visit to reach Estimate Booked. After sending the quote, select Estimate Sent, then Follow Up. A confirmed installation is Job Booked.",tab:"pipeline",cta:"Open Leads"}
 ];
 export function OnboardingGuide({onNavigate,onFinish}){
  const [step,setStep]=useState(0);

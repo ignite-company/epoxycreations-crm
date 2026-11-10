@@ -27,11 +27,13 @@ const connected = Boolean(SUPABASE_URL && KEY);
 const db = connected ? createClient(SUPABASE_URL, KEY) : null;
 const DATA_TABLES={contacts:"epoxy_contacts",jobs:"epoxy_jobs",tasks:"epoxy_tasks",service_areas:"epoxy_service_areas"};
 const STAGES = [
-  { id: "new", label: "New leads", color: "blue" },
+  { id: "new", label: "New Lead", color: "blue" },
   { id: "contacted", label: "Contacted", color: "gray" },
-  { id: "estimate_sent", label: "Estimate sent", color: "orange" },
-  { id: "booked", label: "Job booked", color: "green" },
-  { id: "completed", label: "Completed", color: "green" },
+  { id: "estimate_booked", label: "Estimate Booked", color: "blue" },
+  { id: "estimate_sent", label: "Estimate Sent", color: "orange" },
+  { id: "follow_up", label: "Follow Up", color: "orange" },
+  { id: "booked", label: "Job Booked", color: "green" },
+  { id: "completed", label: "Complete", color: "green" },
   { id: "lost", label: "Lost", color: "gray" }
 ];
 const TABS = [
@@ -99,7 +101,7 @@ const redfinSearchUrl = a => "https://www.redfin.com/search?searchInput="+encode
 const stageInfo = (stage) => STAGES.find(s=>s.id===stage) || STAGES[0];
 const appointmentLabel = j => j.appointment_type==="estimate"?"Estimate visit":j.appointment_type==="job"?"Active job":"Type not set";
 const appointmentClass = j => j.appointment_type==="estimate"?"estimate":j.appointment_type==="job"?"job":"unknown";
-const appointmentStage = (stage,kind) => kind==="job"?(stage==="completed"?"completed":"booked"):kind==="estimate"&&["new","booked"].includes(stage)?"contacted":stage||"new";
+const appointmentStage = (stage,kind) => kind==="job"?(stage==="completed"?"completed":"booked"):kind==="estimate"?(stage==="completed"?"completed":"estimate_booked"):stage||"new";
 const cssDate = (date) => date ? new Date(date).toLocaleDateString("en-CA") : "";
 function csvDownload(rows,filename){
   const quote=v=>{const str=String(v??"");const guarded=/^[=+\-@\t\r]/.test(str)?"'"+str:str;return '"'+guarded.replace(/"/g,'""')+'"';};
@@ -224,16 +226,16 @@ function App(){
   return items.filter(v=>(kind==="contacts"?[v.name,v.phone,v.email,v.address]:[v.service,v.notes,v.source,person(v.contact_id)?.name,person(v.contact_id)?.phone]).filter(Boolean).join(" ").toLowerCase().includes(text));
  };
  // Pipeline stages are deliberately separated from the estimates and jobs ledger.
- const estimateRecords=jobs.filter(j=>j.stage==="estimate_sent"||(["new","contacted"].includes(j.stage)&&j.estimate_amount!=null)||(j.appointment_type==="estimate"&&Boolean(j.scheduled_at)));
+ const estimateRecords=jobs.filter(j=>["estimate_booked","estimate_sent","follow_up"].includes(j.stage)||(["new","contacted"].includes(j.stage)&&j.estimate_amount!=null)||(j.appointment_type==="estimate"&&Boolean(j.scheduled_at)));
  const workRecords=jobs.filter(j=>j.stage==="booked"||j.stage==="completed");
  const visibleRecords=filtered(recordView==="estimates"?estimateRecords:workRecords,"jobs").filter(j=>{
   if(recordFilter==="all")return true;
-  if(recordView==="estimates")return recordFilter==="sent"?j.stage==="estimate_sent":j.stage!=="estimate_sent";
+  if(recordView==="estimates")return recordFilter==="sent"?["estimate_sent","follow_up"].includes(j.stage):!["estimate_sent","follow_up"].includes(j.stage);
   return recordFilter==="scheduled"?j.stage==="booked":j.stage==="completed";
  });
  const activeJobs=jobs.filter(j=>j.stage!=="lost");
  const newLeads=jobs.filter(j=>j.stage==="new").length;
- const estimates=jobs.filter(j=>j.stage==="estimate_sent").length;
+ const estimates=jobs.filter(j=>["estimate_booked","estimate_sent","follow_up"].includes(j.stage)).length;
  const booked=jobs.filter(j=>j.stage==="booked").length;
  const revenue=jobs.filter(j=>j.stage==="completed").reduce((s,j)=>s+Number(j.final_amount??j.estimate_amount??0),0);
  const openTasks=tasks.filter(t=>!t.completed).sort((a,b)=>new Date(a.due_at)-new Date(b.due_at));
@@ -280,7 +282,8 @@ function App(){
    if(modal==="job"){
     const address=draftAddress(form).trim();
     if(form.scheduled_at&&!["estimate","job"].includes(form.appointment_type))throw Error("Choose Estimate visit or Active job before booking a calendar appointment.");
-    const stageForSave=form.scheduled_at?appointmentStage(form.stage,form.appointment_type):form.stage||"new";
+    if(form.stage==="estimate_booked"&&(!form.scheduled_at||form.appointment_type!=="estimate"))throw Error("To mark Estimate Booked, choose Estimate Visit and set a date and time.");
+    const stageForSave=form.stage||"new";
     await upsert("jobs",{id:form.id,contact_id:form.contact_id,service:form.service||"Epoxy flooring",source:form.source||"Other",pickup_address:address,stage:stageForSave,appointment_type:form.scheduled_at?form.appointment_type:null,estimate_amount:form.estimate_amount===""||form.estimate_amount==null?null:Number(form.estimate_amount),final_amount:form.final_amount===""||form.final_amount==null?null:Number(form.final_amount),scheduled_at:form.scheduled_at?new Date(form.scheduled_at).toISOString():null,notes:form.notes||"",route_zone:form.route_zone||"",visit_order:form.visit_order??null,lead_details:form.lead_details||{},created_at:form.created_at||new Date().toISOString()},setJobs);
     // The contact record remembers the latest job site address, but each job keeps its own address.
     const existing=person(form.contact_id);
@@ -306,7 +309,8 @@ function App(){
   finally{setQuickSaving(false);}
  }
  async function setJobStage(job,stage){
-  try{setError("");await upsert("jobs",{...job,stage},setJobs);if(connected)await reload();setToast("Job updated");}
+  if(stage==="estimate_booked"&&(!job.scheduled_at||job.appointment_type!=="estimate")){openQuickLead(job);setToast("Choose Estimate Visit and a date to book the estimate.");return;}
+  try{setError("");await upsert("jobs",{...job,stage},setJobs);if(connected)await reload();setToast("Lead stage updated");}
   catch(e){setError(e.message||"Could not update job");}
  }
  async function saveQuickNote(job,notes){
@@ -443,7 +447,7 @@ function App(){
   </div>;
  }
  function newJobForm(){openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"booked",source:"Phone",appointment_type:"job"});}
- function newEstimateForm(){openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"estimate_sent",source:"Phone",appointment_type:"estimate"});}
+ function newEstimateForm(){openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"contacted",source:"Phone",appointment_type:null});}
  function editJob(j,updates={}){openModal("job",{...j,...updates,scheduled_at:Object.prototype.hasOwnProperty.call(updates,"scheduled_at")?updates.scheduled_at:localDateTimeInput(j.scheduled_at)});}
  function workRecordRow(j){
   const c=person(j.contact_id),estimate=recordView==="estimates",completed=j.stage==="completed";
@@ -451,7 +455,7 @@ function App(){
    <div className={"work-record-icon "+(estimate?"quote-icon":"job-icon")}>{estimate?<ClipboardList size={19}/>:<Truck size={19}/>}</div>
    <div className="work-record-detail"><button className="work-record-name" onClick={()=>editJob(j)}>{j.service||"Epoxy flooring"}</button><span>{c?.name||"Customer"}{c?.address?" · "+c.address:""}</span></div>
    <div className="work-record-amount"><span>{estimate?"Estimate amount":"Job value"}</span><strong>{j.estimate_amount==null&&j.final_amount==null?"Not priced":money(completed?(j.final_amount??j.estimate_amount):(j.estimate_amount??j.final_amount))}</strong></div>
-   <div className="work-record-progress"><span className={"work-label "+(estimate?"work-label-estimate":completed?"work-label-complete":"work-label-booked")}>{estimate?(j.stage==="estimate_sent"?"Awaiting reply":j.appointment_type==="estimate"&&j.scheduled_at?"Estimate scheduled":"Draft quote"):completed?"Completed":"Job booked"}</span><small>{estimate?"":j.scheduled_at?fullDate(j.scheduled_at):"Date not set"}</small></div>
+   <div className="work-record-progress"><span className={"work-label "+(estimate?"work-label-estimate":completed?"work-label-complete":"work-label-booked")}>{estimate?(j.stage==="follow_up"?"Follow Up":j.stage==="estimate_sent"?"Estimate Sent":j.stage==="estimate_booked"?"Estimate Booked":"Draft quote"):completed?"Complete":"Job Booked"}</span><small>{estimate?"":j.scheduled_at?fullDate(j.scheduled_at):"Date not set"}</small></div>
    <div className="work-record-actions">{estimate&&<button className="work-quick" onClick={()=>editJob(j,{stage:"booked",appointment_type:"job",scheduled_at:""})}>Book job <ArrowRight size={14}/></button>}<button title="Edit record" aria-label="Edit record" className="icon-btn light" onClick={()=>editJob(j)}><Pencil size={16}/></button></div>
   </div>;
  }
@@ -496,7 +500,7 @@ function App(){
        </div>
        <section className="panel"><div className="panel-top"><div><h2>Recent opportunities</h2><p>Your latest incoming jobs and estimates</p></div><button className="text-action" onClick={()=>changeTab("pipeline")}>Open pipeline <ArrowRight size={16}/></button></div><div className="jobs-list">{jobs.length?jobs.slice(0,5).map(jobRow):<Empty title="No leads yet" subtitle="Add your first lead to get started."/>}</div></section>
       </>}</div>}
-     {tab==="pipeline"&&<div className="content-stack"><div className="section-utility pipeline-utility"><div className="utility-note"><CircleDot size={16}/> Update lead stages as conversations move forward</div><button onClick={()=>openModal("lead",{source:"Phone"})} className="btn btn-outline"><Plus size={16}/> Add opportunity</button></div><div className="pipeline-workflow-hint"><strong>Simple process:</strong> New Leads → Contacted → Estimate sent → Job booked → Completed. Open a customer to see their next step.</div><MobileLeads jobs={jobs} contacts={contacts} stages={STAGES} onEdit={openQuickLead} onAddFollowUp={openFollowUpFromLead}/><div className="pipeline-navigation"><span><b>{jobs.filter(j=>j.stage!=="lost").length}</b> leads across {STAGES.filter(s=>s.id!=="lost").length} stages</span><div className="pipeline-navigation-actions"><span>View more stages</span><button type="button" className="icon-btn light" aria-label="Scroll pipeline to previous stages" onClick={()=>document.getElementById("epoxy-pipeline-board")?.scrollBy({left:-640,behavior:"smooth"})}><ChevronLeft size={17}/></button><button type="button" className="icon-btn light" aria-label="Scroll pipeline to next stages" onClick={()=>document.getElementById("epoxy-pipeline-board")?.scrollBy({left:640,behavior:"smooth"})}><ChevronRight size={17}/></button></div></div><div className="pipeline-board" id="epoxy-pipeline-board" role="region" aria-label="Lead pipeline stages, horizontally scrollable" tabIndex={0}>{STAGES.filter(s=>s.id!=="lost").map(s=><div key={s.id} className="pipe-column"><div className="pipe-heading"><span className={"pipe-mark "+s.color}/><b>{s.label}</b><span>{jobs.filter(j=>j.stage===s.id).length}</span></div><div className="pipe-items">{jobs.filter(j=>j.stage===s.id).map(j=><div key={j.id} className="pipe-card"><div className="pipe-card-overline">{j.source||"Lead"}</div><div className="pipe-received" title={leadReceived(j.created_at)}><Clock size={12}/>{leadReceivedCompact(j.created_at)} <span>· {leadAge(j.created_at,now)}</span></div><button className="pipe-person" onClick={()=>openQuickLead(j)}>{person(j.contact_id)?.name||"Customer"} <ArrowUpRight size={15}/></button><span>{j.service}</span>{j.lead_details?.zip&&<span className="pipe-quote-meta">ZIP {j.lead_details.zip}{j.lead_details.timeline?" · "+j.lead_details.timeline:""}</span>}<button className="pipe-followup-action" title="Add this lead to follow-ups" onClick={()=>openFollowUpFromLead(j)}><ListTodo size={13}/> Add follow-up</button><div className="pipe-card-bottom"><b>{j.estimate_amount==null?"No quote":money(j.estimate_amount)}</b><select aria-label={"Change stage for "+j.service} value={j.stage} onChange={e=>setJobStage(j,e.target.value)}>{STAGES.map(st=><option key={st.id} value={st.id}>{st.label}</option>)}</select></div></div>)}{!jobs.some(j=>j.stage===s.id)&&<div className="pipe-empty">No opportunities</div>}</div></div>)}</div>{jobs.some(j=>j.stage==="lost")&&<div className="closed-note">Lost opportunities: {jobs.filter(j=>j.stage==="lost").length}. View and edit them in Jobs & estimates.</div>}</div>}
+     {tab==="pipeline"&&<div className="content-stack"><div className="section-utility pipeline-utility"><div className="utility-note"><CircleDot size={16}/> Update lead stages as conversations move forward</div><button onClick={()=>openModal("lead",{source:"Phone"})} className="btn btn-outline"><Plus size={16}/> Add opportunity</button></div><div className="pipeline-workflow-hint"><strong>Lead process:</strong> New Lead → Contacted → Estimate Booked → Estimate Sent → Follow Up → Job Booked → Complete, or Lost. Book an estimate from the customer's Schedule section.</div><MobileLeads jobs={jobs} contacts={contacts} stages={STAGES} onEdit={openQuickLead} onAddFollowUp={openFollowUpFromLead}/><div className="pipeline-navigation"><span><b>{jobs.filter(j=>j.stage!=="lost").length}</b> leads across {STAGES.filter(s=>s.id!=="lost").length} stages</span><div className="pipeline-navigation-actions"><span>View more stages</span><button type="button" className="icon-btn light" aria-label="Scroll pipeline to previous stages" onClick={()=>document.getElementById("epoxy-pipeline-board")?.scrollBy({left:-640,behavior:"smooth"})}><ChevronLeft size={17}/></button><button type="button" className="icon-btn light" aria-label="Scroll pipeline to next stages" onClick={()=>document.getElementById("epoxy-pipeline-board")?.scrollBy({left:640,behavior:"smooth"})}><ChevronRight size={17}/></button></div></div><div className="pipeline-board" id="epoxy-pipeline-board" role="region" aria-label="Lead pipeline stages, horizontally scrollable" tabIndex={0}>{STAGES.filter(s=>s.id!=="lost").map(s=><div key={s.id} className="pipe-column"><div className="pipe-heading"><span className={"pipe-mark "+s.color}/><b>{s.label}</b><span>{jobs.filter(j=>j.stage===s.id).length}</span></div><div className="pipe-items">{jobs.filter(j=>j.stage===s.id).map(j=><div key={j.id} className="pipe-card"><div className="pipe-card-overline">{j.source||"Lead"}</div><div className="pipe-received" title={leadReceived(j.created_at)}><Clock size={12}/>{leadReceivedCompact(j.created_at)} <span>· {leadAge(j.created_at,now)}</span></div><button className="pipe-person" onClick={()=>openQuickLead(j)}>{person(j.contact_id)?.name||"Customer"} <ArrowUpRight size={15}/></button><span>{j.service}</span>{j.lead_details?.zip&&<span className="pipe-quote-meta">ZIP {j.lead_details.zip}{j.lead_details.timeline?" · "+j.lead_details.timeline:""}</span>}<button className="pipe-followup-action" title="Add this lead to follow-ups" onClick={()=>openFollowUpFromLead(j)}><ListTodo size={13}/> Add follow-up</button><div className="pipe-card-bottom"><b>{j.estimate_amount==null?"No quote":money(j.estimate_amount)}</b><select aria-label={"Change stage for "+j.service} value={j.stage} onChange={e=>setJobStage(j,e.target.value)}>{STAGES.map(st=><option key={st.id} value={st.id}>{st.label}</option>)}</select></div></div>)}{!jobs.some(j=>j.stage===s.id)&&<div className="pipe-empty">No opportunities</div>}</div></div>)}</div>{jobs.some(j=>j.stage==="lost")&&<div className="closed-note">Lost opportunities: {jobs.filter(j=>j.stage==="lost").length}. View and edit them in Jobs & estimates.</div>}</div>}
      {tab==="jobs"&&<div className="content-stack">
       <section className="panel list-panel">
        <div className="records-tabs" role="tablist" aria-label="Jobs and estimates">
@@ -513,7 +517,7 @@ function App(){
           <div><span><DollarSign size={15}/> Completed value</span><strong>{money(workRecords.filter(j=>j.stage==="completed").reduce((sum,j)=>sum+Number(j.final_amount??j.estimate_amount??0),0))}</strong></div>
          </>:<>
           <div><span><ClipboardList size={15}/> Open estimates</span><strong>{estimateRecords.length}</strong></div>
-          <div><span><Clock size={15}/> Awaiting reply</span><strong>{estimateRecords.filter(j=>j.stage==="estimate_sent").length}</strong></div>
+          <div><span><Clock size={15}/> Awaiting reply</span><strong>{estimateRecords.filter(j=>["estimate_sent","follow_up"].includes(j.stage)).length}</strong></div>
           <div><span><DollarSign size={15}/> Estimated value</span><strong>{money(estimateRecords.reduce((sum,j)=>sum+Number(j.estimate_amount??0),0))}</strong></div>
          </>}
        </div>
@@ -707,14 +711,14 @@ function App(){
       <div className="appointment-editor">
        <strong>Calendar booking</strong><p>Choose what you're scheduling. An estimate visit is not a confirmed installation job.</p>
        <div className="form-grid">
-         <label>Appointment type<select value={form.appointment_type||""} required={Boolean(form.scheduled_at)} onChange={e=>setForm({...form,appointment_type:e.target.value})}>
+         <label>Appointment type<select value={form.appointment_type||""} required={Boolean(form.scheduled_at)} onChange={e=>setForm({...form,appointment_type:e.target.value,stage:form.scheduled_at&&e.target.value?appointmentStage(form.stage,e.target.value):form.stage})}>
            <option value="">Choose estimate or job</option>
-           <option value="estimate">Estimate visit / consultation</option>
-           <option value="job">Active job / installation</option>
+           <option value="estimate">Estimate Visit (moves to Estimate Booked)</option>
+           <option value="job">Active Job (moves to Job Booked)</option>
          </select></label>
-         <label>Date and time<input type="datetime-local" value={form.scheduled_at||""} onChange={e=>setForm({...form,scheduled_at:e.target.value})}/></label>
+         <label>Date and time<input type="datetime-local" value={form.scheduled_at||""} onChange={e=>setForm({...form,scheduled_at:e.target.value,stage:e.target.value&&!form.scheduled_at&&form.appointment_type?appointmentStage(form.stage,form.appointment_type):form.stage})}/></label>
        </div>
-       {form.scheduled_at&&<small>{form.appointment_type==="estimate"?"This appears as an Estimate Visit in the calendar, not a booked installation.":form.appointment_type==="job"?"This appears as an Active Job in the calendar and moves the lead to Job booked.":"Select the appointment type before saving."}</small>}
+       {form.scheduled_at&&<small>{form.appointment_type==="estimate"?"Estimate Visit moves the lead to Estimate Booked, not Job Booked.":form.appointment_type==="job"?"Active Job moves the lead to Job Booked.":"Select the appointment type before saving."}</small>}
      </div>
       <label>Latest contact note<textarea rows={3} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Example: Called Tuesday at 2:25 PM. No answer, left voicemail."/></label>
       {form.id&&<div className="lead-followup-cta"><div><b>Need to contact this lead again?</b><span>Add a categorized follow-up with the latest note. The lead remains in the pipeline.</span></div><button type="button" className="btn btn-outline" onClick={()=>openFollowUpFromLead(form)}><ListTodo size={17}/> Add to follow-ups <ArrowRight size={15}/></button></div>}

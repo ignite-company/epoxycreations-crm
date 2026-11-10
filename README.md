@@ -48,3 +48,7 @@ The saved starting location appears again for new days. Existing saved itinerari
 **Important:** Google Maps displays the chosen stop order, not necessarily the fastest possible order. ZIP-only leads route to their general postal area, so collect street addresses before visiting. A server-side Google Routes optimization endpoint exists in the repository but is **not connected to the simplified user interface**, and automatic drive-time optimization is not active.
 
 Migration: `supabase/estimate-route-plans.sql` was applied to the Ignite Supabase project. Original imported leads remain intact.
+
+## Eight-stage pipeline (November 10, 2026)
+
+New Lead → Contacted → Estimate Booked → Estimate Sent → Follow Up → Job Booked → Complete, or Lost. Estimate Visit booking automatically sets `estimate_booked`; confirmed installation booking sets `booked`. Existing `booked` and `completed` IDs and customer records remain unchanged. Follow Up is a pipeline stage independent of reminder tasks. New inquiries default to `new`.
