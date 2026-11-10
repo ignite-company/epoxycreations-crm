@@ -367,3 +367,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media(max-width:440px){.area-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.area-tile{padding:14px}.area-metrics{gap:7px}.area-metrics>div{padding:12px}.area-metrics strong{font-size:25px}.area-metrics small{display:none}.route-controls{width:100%}.route-controls input,.route-controls select{flex:1;max-width:none;min-width:0}.area-lead .btn{margin-left:50px}}
 
 .import-content{padding:0 23px 23px;display:flex;flex-direction:column;gap:14px;align-items:flex-start}.import-content>p{font-size:12px;line-height:1.7;color:#76889c}.import-content .btn{display:inline-flex;align-items:center;gap:9px;cursor:pointer}.import-warning{display:flex;align-items:flex-start;gap:9px;border-radius:10px;padding:11px 13px;background:#f1f7fb;border:1px solid #dce8f1;color:#486980!important}.import-warning svg{flex-shrink:0;color:#149caf}.import-success{color:#127d6b!important;font-weight:750}
+
+/* Accessible password visibility toggle on the shared CRM sign-in screen. */
+.login-password-field{position:relative;display:block;min-width:0;width:100%}
+.form-stack .login-password-field input{width:100%;min-width:0;box-sizing:border-box;padding-right:56px;font-size:16px;min-height:48px}
+.login-password-toggle{position:absolute;right:3px;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;color:#486a7a;border:0;border-radius:8px;background:transparent;cursor:pointer;touch-action:manipulation}
+.login-password-toggle:hover{background:#edf7f8;color:#136b7d}
+.login-password-toggle:focus-visible{outline:2px solid #0b91ae;outline-offset:1px}
+.login-password-toggle svg{pointer-events:none}

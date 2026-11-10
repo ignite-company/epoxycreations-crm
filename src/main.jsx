@@ -6,7 +6,7 @@ import {
   Plus, Search, Bell, ArrowUpRight, Phone, Mail, MapPin, Check,
   ChevronLeft, ChevronRight, ChevronDown, Menu, X, Clock, Truck, DollarSign,
   CircleCheck, Star, ExternalLink, Download, ShieldCheck, LogOut, Link2,
-  CircleHelp, AlertCircle, ArrowRight, ListTodo, Pencil, Filter, RotateCcw,
+  CircleHelp, AlertCircle, ArrowRight, ListTodo, Pencil, Filter, RotateCcw, Eye, EyeOff,
   CalendarCheck2, CircleDot, Route, MapPinned, Navigation, ArrowUp, ArrowDown, Layers3
 } from "lucide-react";
 import "./styles.css";
@@ -137,9 +137,9 @@ function Brand({ compact=false }){
 function Pill({stage}){const s=stageInfo(stage);return <span className={"pill pill-"+s.color}><span className="pill-dot"/>{s.label}</span>;}
 function Empty({icon:Icon=CircleHelp,title,subtitle,action}){return <div className="empty-state"><div className="empty-icon"><Icon size={23}/></div><h3>{title}</h3><p>{subtitle}</p>{action}</div>;}
 function Login({onLogin}){
- const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[message,setMessage]=useState("");const[loading,setLoading]=useState(false);
+ const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[passwordVisible,setPasswordVisible]=useState(false);const[message,setMessage]=useState("");const[loading,setLoading]=useState(false);
  async function submit(e){e.preventDefault();setLoading(true);setMessage("");const{error}=await db.auth.signInWithPassword({email,password});if(error)setMessage(error.message);else onLogin();setLoading(false);}
- return <div className="login-bg"><div className="login-card"><Brand/><div className="login-hero"><ShieldCheck size={32}/><h1>Welcome back</h1><p>Your customers, jobs and follow-ups, all in one place.</p></div><form onSubmit={submit} className="form-stack"><label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="contact@ignitellc.co"/></label><label>Password<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your password"/></label>{message&&<p className="error-text">{message}</p>}<button disabled={loading} className="btn btn-primary" type="submit">{loading?"Signing in…":"Sign in"}<ArrowRight size={17}/></button></form><p className="login-footnote">Sign in with your existing Ignite client portal account. Only approved Epoxy and Ignite users can access these records.</p></div></div>;
+ return <div className="login-bg"><div className="login-card"><Brand/><div className="login-hero"><ShieldCheck size={32}/><h1>Welcome back</h1><p>Your customers, jobs and follow-ups, all in one place.</p></div><form onSubmit={submit} className="form-stack"><label>Email address<input type="email" required autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} placeholder="contact@ignitellc.co"/></label><label>Password<div className="login-password-field"><input type={passwordVisible?"text":"password"} required autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Your password"/><button type="button" className="login-password-toggle" aria-label={passwordVisible?"Hide password":"Show password"} aria-pressed={passwordVisible} title={passwordVisible?"Hide password":"Show password"} onClick={()=>setPasswordVisible(v=>!v)}>{passwordVisible?<EyeOff size={20} aria-hidden="true"/>:<Eye size={20} aria-hidden="true"/>}</button></div></label>{message&&<p className="error-text">{message}</p>}<button disabled={loading} className="btn btn-primary" type="submit">{loading?"Signing in…":"Sign in"}<ArrowRight size={17}/></button></form><p className="login-footnote">Sign in with your existing Ignite client portal account. Only approved Epoxy and Ignite users can access these records.</p></div></div>;
 }
 function App(){
  const[session,setSession]=useState(null);
