@@ -444,15 +444,15 @@ function App(){
  }
  function newJobForm(){openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"booked",source:"Phone",appointment_type:"job"});}
  function newEstimateForm(){openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"estimate_sent",source:"Phone",appointment_type:"estimate"});}
- function editJob(j,updates={}){openModal("job",{...j,...updates,scheduled_at:localDateTimeInput(j.scheduled_at)});}
+ function editJob(j,updates={}){openModal("job",{...j,...updates,scheduled_at:Object.prototype.hasOwnProperty.call(updates,"scheduled_at")?updates.scheduled_at:localDateTimeInput(j.scheduled_at)});}
  function workRecordRow(j){
   const c=person(j.contact_id),estimate=recordView==="estimates",completed=j.stage==="completed";
   return <div className="work-record" key={j.id}>
    <div className={"work-record-icon "+(estimate?"quote-icon":"job-icon")}>{estimate?<ClipboardList size={19}/>:<Truck size={19}/>}</div>
    <div className="work-record-detail"><button className="work-record-name" onClick={()=>editJob(j)}>{j.service||"Epoxy flooring"}</button><span>{c?.name||"Customer"}{c?.address?" · "+c.address:""}</span></div>
    <div className="work-record-amount"><span>{estimate?"Estimate amount":"Job value"}</span><strong>{j.estimate_amount==null&&j.final_amount==null?"Not priced":money(completed?(j.final_amount??j.estimate_amount):(j.estimate_amount??j.final_amount))}</strong></div>
-   <div className="work-record-progress"><span className={"work-label "+(estimate?"work-label-estimate":completed?"work-label-complete":"work-label-booked")}>{estimate?(j.stage==="estimate_sent"?"Awaiting reply":"Draft quote"):completed?"Completed":"Booked"}</span><small>{estimate?"":j.scheduled_at?fullDate(j.scheduled_at):"Date not set"}</small></div>
-   <div className="work-record-actions">{estimate&&<button className="work-quick" onClick={()=>editJob(j,{stage:"booked"})}>Book job <ArrowRight size={14}/></button>}<button title="Edit record" aria-label="Edit record" className="icon-btn light" onClick={()=>editJob(j)}><Pencil size={16}/></button></div>
+   <div className="work-record-progress"><span className={"work-label "+(estimate?"work-label-estimate":completed?"work-label-complete":"work-label-booked")}>{estimate?(j.stage==="estimate_sent"?"Awaiting reply":j.appointment_type==="estimate"&&j.scheduled_at?"Estimate scheduled":"Draft quote"):completed?"Completed":"Job booked"}</span><small>{estimate?"":j.scheduled_at?fullDate(j.scheduled_at):"Date not set"}</small></div>
+   <div className="work-record-actions">{estimate&&<button className="work-quick" onClick={()=>editJob(j,{stage:"booked",appointment_type:"job",scheduled_at:""})}>Book job <ArrowRight size={14}/></button>}<button title="Edit record" aria-label="Edit record" className="icon-btn light" onClick={()=>editJob(j)}><Pencil size={16}/></button></div>
   </div>;
  }
  if(authLoading)return <div className="loading-page">Loading Epoxy Creations Command Center…</div>;
@@ -486,13 +486,13 @@ function App(){
         {showOverview&&<>
        <div className="metric-grid">
         <div className="metric-card"><div className="metric-top"><span>New leads</span><div className="metric-icon blue"><Users size={19}/></div></div><strong>{newLeads}</strong><small>Incoming customer inquiries</small></div>
-        <div className="metric-card"><div className="metric-top"><span>Open estimates</span><div className="metric-icon orange"><ClipboardList size={19}/></div></div><strong>{estimates}</strong><small>Ready for follow-up</small></div>
+        <div className="metric-card"><div className="metric-top"><span>Open estimates</span><div className="metric-icon orange"><ClipboardList size={19}/></div></div><strong>{estimates}</strong><small>Quotes and estimate appointments</small></div>
         <div className="metric-card"><div className="metric-top"><span>Booked jobs</span><div className="metric-icon green"><Truck size={19}/></div></div><strong>{booked}</strong><small>Scheduled or pending date</small></div>
         <div className="metric-card"><div className="metric-top"><span>Completed job value</span><div className="metric-icon green"><DollarSign size={19}/></div></div><strong>{money(revenue)}</strong><small>Recorded completed jobs, all time</small></div>
        </div>
        <div className="dash-grid">
         <section className="panel"><div className="panel-top"><div><h2>Needs your attention</h2><p>Follow-ups waiting on you</p></div><button className="text-action" onClick={()=>changeTab("tasks")}>View all <ArrowRight size={16}/></button></div><div>{openTasks.length?openTasks.slice(0,4).map(taskRow):<Empty icon={CircleCheck} title="No reminders added" subtitle="Email follow-ups have a separate status screen. Open Follow-ups to check whether automation is connected."/>}</div><div className="panel-foot"><button className="subtle-action" onClick={()=>openModal("task",{due_at:new Date().toISOString().slice(0,16)})}><Plus size={16}/> Add follow-up</button></div></section>
-        <section className="panel"><div className="panel-top"><div><h2>Upcoming jobs</h2><p>Booked work on your schedule</p></div><button className="text-action" onClick={()=>changeTab("calendar")}>Calendar <ArrowRight size={16}/></button></div><div>{upcomingJobs.length?upcomingJobs.slice(0,4).map(j=><div key={j.id} className="schedule-row"><div className="schedule-date"><b>{new Date(j.scheduled_at).toLocaleDateString("en-US",{day:"2-digit"})}</b><span>{new Date(j.scheduled_at).toLocaleDateString("en-US",{month:"short"})}</span></div><div><b>{j.service}</b><span>{person(j.contact_id)?.name||"Customer"}</span></div><span className="schedule-time">{new Date(j.scheduled_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</span></div>):<Empty icon={CalendarDays} title="No jobs scheduled" subtitle="Book a job to see it here."/>}</div><div className="panel-foot"><button className="subtle-action" onClick={newJobForm} disabled={!contacts.length}><Plus size={16}/> Schedule a job</button></div></section>
+        <section className="panel"><div className="panel-top"><div><h2>Upcoming appointments</h2><p>Estimate visits and confirmed jobs</p></div><button className="text-action" onClick={()=>changeTab("calendar")}>Calendar <ArrowRight size={16}/></button></div><div>{upcomingJobs.length?upcomingJobs.slice(0,4).map(j=><div key={j.id} className="schedule-row"><div className="schedule-date"><b>{new Date(j.scheduled_at).toLocaleDateString("en-US",{day:"2-digit"})}</b><span>{new Date(j.scheduled_at).toLocaleDateString("en-US",{month:"short"})}</span></div><div><b>{j.service}</b><span>{person(j.contact_id)?.name||"Customer"}</span></div><span className="schedule-time">{new Date(j.scheduled_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</span></div>):<Empty icon={CalendarDays} title="No jobs scheduled" subtitle="Book a job to see it here."/>}</div><div className="panel-foot"><button className="subtle-action" onClick={newJobForm} disabled={!contacts.length}><Plus size={16}/> Schedule a job</button></div></section>
        </div>
        <section className="panel"><div className="panel-top"><div><h2>Recent opportunities</h2><p>Your latest incoming jobs and estimates</p></div><button className="text-action" onClick={()=>changeTab("pipeline")}>Open pipeline <ArrowRight size={16}/></button></div><div className="jobs-list">{jobs.length?jobs.slice(0,5).map(jobRow):<Empty title="No leads yet" subtitle="Add your first lead to get started."/>}</div></section>
       </>}</div>}
@@ -541,21 +541,21 @@ function App(){
      />}
      {tab==="calendar"&&<div className="content-stack">
  <section className="panel calendar-panel">
-  <div className="panel-top"><div><h2>{month.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</h2><p>Tap a date to see scheduled jobs and addresses.</p></div><div className="calendar-actions"><button className="icon-btn outline" aria-label="Previous month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()-1,1))}><ChevronLeft size={19}/></button><button className="btn btn-outline" onClick={()=>setMonth(new Date(new Date().getFullYear(),new Date().getMonth(),1))}>Today</button><button className="icon-btn outline" aria-label="Next month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()+1,1))}><ChevronRight size={19}/></button></div></div>
+  <div className="panel-top"><div><h2>{month.toLocaleDateString("en-US",{month:"long",year:"numeric"})}</h2><p>Tap a day to see which visits are estimates and which are active jobs.</p></div><div className="calendar-actions"><button className="icon-btn outline" aria-label="Previous month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()-1,1))}><ChevronLeft size={19}/></button><button className="btn btn-outline" onClick={()=>setMonth(new Date(new Date().getFullYear(),new Date().getMonth(),1))}>Today</button><button className="icon-btn outline" aria-label="Next month" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()+1,1))}><ChevronRight size={19}/></button></div></div>
   <div className="calendar-grid">{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=><div key={d} className="weekday">{d}</div>)}{Array.from({length:Math.ceil((new Date(month.getFullYear(),month.getMonth(),1).getDay()+new Date(month.getFullYear(),month.getMonth()+1,0).getDate())/7)*7},(_,i)=>{
    const day=i-new Date(month.getFullYear(),month.getMonth(),1).getDay()+1;
    const cur=new Date(month.getFullYear(),month.getMonth(),day);
    const isCurrent=cur.getMonth()===month.getMonth();
    const isToday=cur.toDateString()===new Date().toDateString();
    const dayJobs=jobs.filter(j=>j.scheduled_at&&new Date(j.scheduled_at).toDateString()===cur.toDateString()&&j.stage!=="lost");
-   return <button type="button" key={i} aria-label={dayLabel(cur)+"; "+dayJobs.length+" scheduled jobs"} className={"cal-day cal-selectable "+(!isCurrent?"outside":"")+(isToday?" is-today":"")} onClick={()=>setSelectedDay(cur)}>
+   return <button type="button" key={i} aria-label={dayLabel(cur)+"; "+dayJobs.length+" appointments"} className={"cal-day cal-selectable "+(!isCurrent?"outside":"")+(isToday?" is-today":"")} onClick={()=>setSelectedDay(cur)}>
     <span className="date-num">{cur.getDate()}</span>
-    {dayJobs.slice(0,3).map(j=><span key={j.id} className="cal-event">{new Date(j.scheduled_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})} · {person(j.contact_id)?.name||j.service}</span>)}
+    {dayJobs.slice(0,3).map(j=><span key={j.id} className={"cal-event cal-event-"+appointmentClass(j)}>{appointmentLabel(j)} · {new Date(j.scheduled_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})} · {person(j.contact_id)?.name||j.service}</span>)}
     {dayJobs.length>3&&<small>+{dayJobs.length-3} more</small>}
    </button>;
   })}</div>
  </section>
- <div className="calendar-notice"><CalendarCheck2 size={20}/><div><b>Google Calendar is not connected yet</b><p>Jobs scheduled here appear in this calendar. Google Calendar sync can be connected separately.</p></div><a href="https://calendar.google.com/" target="_blank" rel="noreferrer">Open Google Calendar <ExternalLink size={15}/></a></div>
+ <div className="calendar-notice"><CalendarCheck2 size={20}/><div><b>Google Calendar is not connected yet</b><p>Estimate visits and active jobs saved in this CRM appear here. Google Calendar sync is not connected.</p></div><a href="https://calendar.google.com/" target="_blank" rel="noreferrer">Open Google Calendar <ExternalLink size={15}/></a></div>
  </div>}
 
 
@@ -619,19 +619,19 @@ function App(){
        onEdit={j=>{setQuickLeadId(null);editJob(j);}}/>
     </div>}
    {selectedDay&&<div className="modal-overlay day-schedule-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelectedDay(null);}}>
-    <div className="modal day-schedule-panel" role="dialog" aria-modal="true" aria-label={"Pickups for "+dayLabel(selectedDay)}>
-      <div className="modal-top"><div><div className="eyebrow">EPOXY CREATIONS JOB SCHEDULE</div><h2>{dayLabel(selectedDay)}</h2><p>{selectedDayJobs.length} {selectedDayJobs.length===1?"job":"jobs"} scheduled for this day.</p></div><button className="icon-btn light" aria-label="Close day schedule" onClick={()=>setSelectedDay(null)}><X size={20}/></button></div>
+    <div className="modal day-schedule-panel" role="dialog" aria-modal="true" aria-label={"Appointments for "+dayLabel(selectedDay)}>
+      <div className="modal-top"><div><div className="eyebrow">EPOXY CREATIONS CALENDAR</div><h2>{dayLabel(selectedDay)}</h2><p>{selectedDayJobs.length} {selectedDayJobs.length===1?"appointment":"appointments"} scheduled for this day.</p></div><button className="icon-btn light" aria-label="Close day schedule" onClick={()=>setSelectedDay(null)}><X size={20}/></button></div>
       <div className="day-schedule-list">{selectedDayJobs.length?selectedDayJobs.map(j=>{
         const c=person(j.contact_id),addr=addressForJob(j);
         return <div key={j.id} className="day-pickup">
           <div className="day-pickup-time"><Clock size={15}/><strong>{new Date(j.scheduled_at).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</strong></div>
-          <div className="day-pickup-info"><b>{c?.name||"Customer"}</b><span>{j.service}</span><div className="day-pickup-address"><MapPin size={16}/><span>{addr||"Job site address not added yet"}</span></div>
-           <div className="day-pickup-links">{addr&&<a href={mapsUrl(addr)} target="_blank" rel="noopener noreferrer">Directions <ExternalLink size={13}/></a>}{c?.phone&&<a href={"tel:"+c.phone}>Call customer <Phone size={13}/></a>}<button onClick={()=>{setSelectedDay(null);editJob(j)}}>Open job <ArrowRight size={14}/></button></div>
+          <div className="day-pickup-info"><b>{c?.name||"Customer"}</b><span className={"appointment-tag appointment-tag-"+appointmentClass(j)}>{appointmentLabel(j)}</span><span>{j.service}</span><div className="day-pickup-address"><MapPin size={16}/><span>{addr||"Job site address not added yet"}</span></div>
+           <div className="day-pickup-links">{addr&&<a href={mapsUrl(addr)} target="_blank" rel="noopener noreferrer">Directions <ExternalLink size={13}/></a>}{c?.phone&&<a href={"tel:"+c.phone}>Call customer <Phone size={13}/></a>}<button onClick={()=>{setSelectedDay(null);editJob(j)}}>Edit appointment <ArrowRight size={14}/></button></div>
           </div>
           <Pill stage={j.stage}/>
          </div>;
-       }):<Empty icon={CalendarDays} title="No jobs scheduled" subtitle="There are no bookings on this day. Add a job and set its date and time to see it here."/>}</div>
-      <div className="day-schedule-foot"><button className="btn btn-outline" onClick={()=>setSelectedDay(null)}>Close schedule</button><button className="btn btn-primary" disabled={!contacts.length} onClick={()=>{const when=new Date(selectedDay);when.setHours(9,0,0,0);setSelectedDay(null);openModal("job",{contact_id:contacts[0]?.id||"",service:"Epoxy flooring",stage:"booked",source:"Phone",scheduled_at:localDateTimeInput(when)});}}><Plus size={16}/> Schedule job site</button></div>
+       }):<Empty icon={CalendarDays} title="No appointments scheduled" subtitle="Schedule an estimate visit or an active job from a lead, or add one using the calendar."/>}</div>
+      <div className="day-schedule-foot"><button className="btn btn-outline" onClick={()=>setSelectedDay(null)}>Close schedule</button><button className="btn btn-primary" disabled={!contacts.length} onClick={()=>{const when=new Date(selectedDay);when.setHours(9,0,0,0);setSelectedDay(null);openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"contacted",source:"Phone",appointment_type:"estimate",scheduled_at:localDateTimeInput(when)});}}><Plus size={16}/> Schedule estimate</button><button className="btn btn-primary" disabled={!contacts.length} onClick={()=>{const when=new Date(selectedDay);when.setHours(9,0,0,0);setSelectedDay(null);openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"booked",source:"Phone",appointment_type:"job",scheduled_at:localDateTimeInput(when)});}}><Plus size={16}/> Schedule job</button></div>
     </div>
    </div>}
    {propertyView&&<div className="modal-overlay property-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)closeProperty();}}>
