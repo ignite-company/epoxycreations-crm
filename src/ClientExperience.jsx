@@ -3,31 +3,37 @@ import { ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronLef
 import "./ClientExperience.css";
 
 const stageNext={
- imported:"Check the inquiry and contact this customer. Move to New lead when it has been reviewed.",
- new:"Call or email this customer. Move to Contacted after you've reached out.",
- contacted:"Record your conversation, then prepare an estimate or book the job.",
- estimate_sent:"Check back on the quote and book the job when the customer agrees.",
- booked:"Make sure the date and address are correct. Mark Completed after the work is finished.",
+ new:"Call or email this customer. Schedule an estimate visit when ready. An estimate is not a booked job.",
+ contacted:"Record the conversation, schedule an estimate, and prepare the quote. Only mark Job booked once the customer agrees.",
+ estimate_sent:"Follow up on the quote. When the customer approves, schedule an Active Job.",
+ booked:"The installation is confirmed. Verify the job date and address, then mark Completed when finished.",
  completed:"This job is finished. Keep the final value and notes accurate.",
  lost:"No further action is scheduled unless the customer contacts you again."
 };
 const money=value=>value==null?"Not quoted":new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(Number(value)||0);
 const dateText=value=>value?new Date(value).toLocaleDateString("en-US",{month:"short",day:"numeric"}):"Not scheduled";
+const toLocalDateTime=value=>{
+ if(!value)return "";
+ const d=new Date(value);if(Number.isNaN(d.getTime()))return "";
+ const pad=n=>String(n).padStart(2,"0");
+ return [d.getFullYear(),pad(d.getMonth()+1),pad(d.getDate())].join("-")+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
+};
+const appointmentTitle=job=>job.appointment_type==="estimate"?"Estimate Visit":job.appointment_type==="job"?"Active Job":"Type not set";
 
 export function TodayPriorities({jobs=[],contacts=[],tasks=[],onLead,onTask,onComplete,onNavigate,onNewReminder}){
  const byId=new Map(contacts.map(c=>[c.id,c]));
- const waiting=jobs.filter(j=>j.stage==="imported"||j.stage==="new").sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+ const waiting=jobs.filter(j=>j.stage==="new").sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
  const pending=tasks.filter(t=>!t.completed).sort((a,b)=>new Date(a.due_at||0)-new Date(b.due_at||0));
  const overdue=pending.filter(t=>t.due_at&&new Date(t.due_at).getTime()<Date.now());
  const estimates=jobs.filter(j=>j.stage==="estimate_sent");
- const upcoming=jobs.filter(j=>j.stage==="booked"&&j.scheduled_at&&new Date(j.scheduled_at).getTime()>=Date.now()).sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at));
+ const upcoming=jobs.filter(j=>j.stage!=="lost"&&j.scheduled_at&&new Date(j.scheduled_at).getTime()>=Date.now()).sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at));
  return <section className="today-board" aria-label="Today's priorities">
   <div className="today-top"><div><span className="today-kicker">YOUR DAILY WORKLIST</span><h2>Here's what needs your attention</h2><p>Start with a follow-up or new inquiry. Nothing here is automatically marked as contacted.</p></div><button type="button" onClick={onNewReminder}><Plus size={16}/> Reminder</button></div>
   <div className="today-counts">
    <button type="button" onClick={()=>onNavigate("tasks")}><span>Open reminders</span><strong>{pending.length}</strong><small>{overdue.length?overdue.length+" overdue":"View follow-ups"} <ArrowRight size={12}/></small></button>
-   <button type="button" onClick={()=>onNavigate("pipeline")}><span>Leads to review</span><strong>{waiting.length}</strong><small>New or unreviewed <ArrowRight size={12}/></small></button>
+   <button type="button" onClick={()=>onNavigate("pipeline")}><span>New leads</span><strong>{waiting.length}</strong><small>Incoming inquiries <ArrowRight size={12}/></small></button>
    <button type="button" onClick={()=>onNavigate("estimates")}><span>Estimates awaiting reply</span><strong>{estimates.length}</strong><small>Quotes to check <ArrowRight size={12}/></small></button>
-   <button type="button" onClick={()=>onNavigate("calendar")}><span>Upcoming appointments</span><strong>{upcoming.length}</strong><small>Scheduled jobs <ArrowRight size={12}/></small></button>
+   <button type="button" onClick={()=>onNavigate("calendar")}><span>Upcoming appointments</span><strong>{upcoming.length}</strong><small>Estimates and jobs <ArrowRight size={12}/></small></button>
   </div>
   <div className="today-work">
    <div className="today-work-group"><div className="today-group-head"><h3><ListTodo size={18}/> Follow up next</h3><button onClick={()=>onNavigate("tasks")}>See all <ArrowRight size={15}/></button></div>
@@ -40,15 +46,18 @@ export function TodayPriorities({jobs=[],contacts=[],tasks=[],onLead,onTask,onCo
    <div className="today-work-group"><div className="today-group-head"><h3><Phone size={18}/> New inquiries</h3><button onClick={()=>onNavigate("pipeline")}>See all <ArrowRight size={15}/></button></div>
     {waiting.length?waiting.slice(0,3).map(j=><button type="button" className="today-lead" key={j.id} onClick={()=>onLead(j)}>
       <div><strong>{byId.get(j.contact_id)?.name||"Customer"}</strong><span>{j.service||"Epoxy flooring"} · {dateText(j.created_at)}</span></div><ArrowUpRight size={17}/>
-     </button>):<p className="today-empty">No leads waiting for review.</p>}
+     </button>):<p className="today-empty">No new inquiries waiting.</p>}
    </div>
   </div>
  </section>;
 }
 
-export function QuickLeadView({job,contact={},stages=[],saving=false,onClose,onStage,onNotes,onReminder,onEdit}){
+export function QuickLeadView({job,contact={},stages=[],saving=false,onClose,onStage,onNotes,onReminder,onEdit,onSchedule}){
  const [notes,setNotes]=useState(job.notes||"");
+ const [bookingKind,setBookingKind]=useState(job.appointment_type||"");
+ const [bookingTime,setBookingTime]=useState(toLocalDateTime(job.scheduled_at));
  useEffect(()=>setNotes(job.notes||""),[job.id,job.notes]);
+ useEffect(()=>{setBookingKind(job.appointment_type||"");setBookingTime(toLocalDateTime(job.scheduled_at));},[job.id,job.appointment_type,job.scheduled_at]);
  const info=job.lead_details||{};
  return <div className="quick-view" role="dialog" aria-modal="true" aria-label={"Customer details for "+(contact.name||"customer")}>
   <div className="quick-head"><div><span>LEAD DETAILS</span><h2>{contact.name||"Customer"}</h2><p>{job.service||"Epoxy flooring"}</p></div><button type="button" className="quick-close" onClick={onClose} aria-label="Close customer details"><X size={20}/></button></div>
@@ -63,6 +72,24 @@ export function QuickLeadView({job,contact={},stages=[],saving=false,onClose,onS
       {stages.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
     </select>
    </label>
+   <div className="quick-booking" aria-label="Schedule an appointment for this lead">
+     <div className="quick-booking-head"><strong><CalendarDays size={17}/> Schedule on calendar</strong><p>Choose the visit type first. An estimate does not mean the installation job is booked.</p></div>
+     {job.scheduled_at&&<div className={"quick-existing-booking quick-existing-"+(job.appointment_type||"unknown")}>
+       Current booking: <strong>{appointmentTitle(job)}</strong> · {new Date(job.scheduled_at).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}
+       {!job.appointment_type&&<span> Select the type below to classify this older booking.</span>}
+     </div>}
+     <div className="quick-booking-options" role="group" aria-label="Type of appointment">
+       <button type="button" className={bookingKind==="estimate"?"is-selected estimate-selected":""} aria-pressed={bookingKind==="estimate"} onClick={()=>setBookingKind("estimate")}><ClipboardList size={17}/><span>Estimate Visit<small>Measure, inspect or quote</small></span></button>
+       <button type="button" className={bookingKind==="job"?"is-selected job-selected":""} aria-pressed={bookingKind==="job"} onClick={()=>setBookingKind("job")}><CheckCircle2 size={17}/><span>Active Job<small>Confirmed installation</small></span></button>
+     </div>
+     <label className="quick-booking-time">Date and time
+       <input type="datetime-local" value={bookingTime} onChange={e=>setBookingTime(e.target.value)}/>
+     </label>
+     <button type="button" className="quick-booking-save" disabled={saving||!bookingKind||!bookingTime} onClick={()=>onSchedule?.(job,bookingKind,bookingTime)}>
+       <CalendarDays size={17}/>{saving?"Saving booking…":"Save to CRM calendar"}
+     </button>
+     <p className="quick-booking-hint">Estimate Visit keeps this as a lead; Active Job moves it to Job booked. CRM appointments do not sync to Google Calendar yet.</p>
+   </div>
    <div className="quick-detail-grid">
     <div><span>Project</span><strong>{job.service||"Epoxy flooring"}</strong></div>
     <div><span>Timeline</span><strong>{info.timeline||"Not provided"}</strong></div>
@@ -81,15 +108,15 @@ export function QuickLeadView({job,contact={},stages=[],saving=false,onClose,onS
   </div>
   <div className="quick-foot">
     <button type="button" onClick={()=>onReminder(job)}><ListTodo size={16}/> Add follow-up</button>
-    <button type="button" onClick={()=>onEdit(job)}><CalendarDays size={16}/> Estimate / full details</button>
+    <button type="button" onClick={()=>onEdit(job)}><CalendarDays size={16}/> More details</button>
   </div>
  </div>;
 }
 
 const guideSteps=[
- {title:"Review a new inquiry",body:"Open Leads. Start with Needs review, check the customer's project and contact details, then choose the correct status.",tab:"pipeline",cta:"Go to Leads"},
+ {title:"Review a new inquiry",body:"Open Leads. Facebook inquiries arrive in New Leads. Check the project and contact the customer, then update the status.",tab:"pipeline",cta:"Go to Leads"},
  {title:"Record your conversation",body:"Tap a customer's name, call or email them, then save a short note and update their status. You do not need the full edit form.",tab:"pipeline",cta:"View customers"},
- {title:"Plan the next action",body:"Add a follow-up reminder or use Calendar to plan an estimate. The Home screen will show outstanding work.",tab:"tasks",cta:"Open Follow-ups"}
+ {title:"Plan the next action",body:"Schedule an Estimate Visit or Active Job directly from the lead. The calendar shows which type each booking is.",tab:"tasks",cta:"Open Follow-ups"}
 ];
 export function OnboardingGuide({onNavigate,onFinish}){
  const [step,setStep]=useState(0);
