@@ -226,7 +226,7 @@ function App(){
   return items.filter(v=>(kind==="contacts"?[v.name,v.phone,v.email,v.address]:[v.service,v.notes,v.source,person(v.contact_id)?.name,person(v.contact_id)?.phone]).filter(Boolean).join(" ").toLowerCase().includes(text));
  };
  // Pipeline stages are deliberately separated from the estimates and jobs ledger.
- const estimateRecords=jobs.filter(j=>["estimate_booked","estimate_sent","follow_up"].includes(j.stage)||(["new","contacted"].includes(j.stage)&&j.estimate_amount!=null)||(j.appointment_type==="estimate"&&Boolean(j.scheduled_at)));
+ const estimateRecords=jobs.filter(j=>["estimate_booked","estimate_sent","follow_up"].includes(j.stage)||(["new","contacted"].includes(j.stage)&&j.estimate_amount!=null)||(j.appointment_type==="estimate"&&Boolean(j.scheduled_at))||(j.lead_details?.estimate_draft&&!["booked","completed","lost"].includes(j.stage)));
  const workRecords=jobs.filter(j=>j.stage==="booked"||j.stage==="completed");
  const visibleRecords=filtered(recordView==="estimates"?estimateRecords:workRecords,"jobs").filter(j=>{
   if(recordFilter==="all")return true;
@@ -447,7 +447,7 @@ function App(){
   </div>;
  }
  function newJobForm(){openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"booked",source:"Phone",appointment_type:"job"});}
- function newEstimateForm(){openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"contacted",source:"Phone",appointment_type:null});}
+ function newEstimateForm(){openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"contacted",source:"Phone",appointment_type:null,lead_details:{estimate_draft:true}});}
  function editJob(j,updates={}){openModal("job",{...j,...updates,scheduled_at:Object.prototype.hasOwnProperty.call(updates,"scheduled_at")?updates.scheduled_at:localDateTimeInput(j.scheduled_at)});}
  function workRecordRow(j){
   const c=person(j.contact_id),estimate=recordView==="estimates",completed=j.stage==="completed";
