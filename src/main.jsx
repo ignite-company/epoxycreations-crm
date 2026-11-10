@@ -27,11 +27,10 @@ const connected = Boolean(SUPABASE_URL && KEY);
 const db = connected ? createClient(SUPABASE_URL, KEY) : null;
 const DATA_TABLES={contacts:"epoxy_contacts",jobs:"epoxy_jobs",tasks:"epoxy_tasks",service_areas:"epoxy_service_areas"};
 const STAGES = [
-  { id: "imported", label: "Needs review", color: "gray" },
-  { id: "new", label: "New lead", color: "blue" },
+  { id: "new", label: "New leads", color: "blue" },
   { id: "contacted", label: "Contacted", color: "gray" },
   { id: "estimate_sent", label: "Estimate sent", color: "orange" },
-  { id: "booked", label: "Booked", color: "green" },
+  { id: "booked", label: "Job booked", color: "green" },
   { id: "completed", label: "Completed", color: "green" },
   { id: "lost", label: "Lost", color: "gray" }
 ];
@@ -98,6 +97,9 @@ const mapsUrl = a => "https://www.google.com/maps/search/?api=1&query="+encodeUR
 const propertySearchUrl = a => "https://www.zillow.com/homes/"+encodeURIComponent(a.trim().replace(/[,\s]+/g,"-"))+"_rb/";
 const redfinSearchUrl = a => "https://www.redfin.com/search?searchInput="+encodeURIComponent(a.trim());
 const stageInfo = (stage) => STAGES.find(s=>s.id===stage) || STAGES[0];
+const appointmentLabel = j => j.appointment_type==="estimate"?"Estimate visit":j.appointment_type==="job"?"Active job":"Type not set";
+const appointmentClass = j => j.appointment_type==="estimate"?"estimate":j.appointment_type==="job"?"job":"unknown";
+const appointmentStage = (stage,kind) => kind==="job"?(stage==="completed"?"completed":"booked"):kind==="estimate"&&["new","booked"].includes(stage)?"contacted":stage||"new";
 const cssDate = (date) => date ? new Date(date).toLocaleDateString("en-CA") : "";
 function csvDownload(rows,filename){
   const quote=v=>{const str=String(v??"");const guarded=/^[=+\-@\t\r]/.test(str)?"'"+str:str;return '"'+guarded.replace(/"/g,'""')+'"';};
@@ -222,7 +224,7 @@ function App(){
   return items.filter(v=>(kind==="contacts"?[v.name,v.phone,v.email,v.address]:[v.service,v.notes,v.source,person(v.contact_id)?.name,person(v.contact_id)?.phone]).filter(Boolean).join(" ").toLowerCase().includes(text));
  };
  // Pipeline stages are deliberately separated from the estimates and jobs ledger.
- const estimateRecords=jobs.filter(j=>j.stage==="estimate_sent"||(["new","contacted"].includes(j.stage)&&j.estimate_amount!=null));
+ const estimateRecords=jobs.filter(j=>j.stage==="estimate_sent"||(["new","contacted"].includes(j.stage)&&j.estimate_amount!=null)||(j.appointment_type==="estimate"&&Boolean(j.scheduled_at)));
  const workRecords=jobs.filter(j=>j.stage==="booked"||j.stage==="completed");
  const visibleRecords=filtered(recordView==="estimates"?estimateRecords:workRecords,"jobs").filter(j=>{
   if(recordFilter==="all")return true;
@@ -230,7 +232,7 @@ function App(){
   return recordFilter==="scheduled"?j.stage==="booked":j.stage==="completed";
  });
  const activeJobs=jobs.filter(j=>j.stage!=="lost");
- const newLeads=jobs.filter(j=>j.stage==="new"||j.stage==="imported").length;
+ const newLeads=jobs.filter(j=>j.stage==="new").length;
  const estimates=jobs.filter(j=>j.stage==="estimate_sent").length;
  const booked=jobs.filter(j=>j.stage==="booked").length;
  const revenue=jobs.filter(j=>j.stage==="completed").reduce((s,j)=>s+Number(j.final_amount??j.estimate_amount??0),0);
@@ -240,7 +242,7 @@ function App(){
  const filteredDoneTasks=visibleTasks.filter(t=>t.completed);
  const completedCustomerIds=new Set(jobs.filter(j=>j.stage==="completed").map(j=>j.contact_id));
  const completedCustomers=contacts.filter(c=>completedCustomerIds.has(c.id));
- const upcomingJobs=jobs.filter(j=>j.stage==="booked"&&j.scheduled_at).sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at));
+ const upcomingJobs=jobs.filter(j=>j.scheduled_at&&j.stage!=="lost"&&new Date(j.scheduled_at).getTime()>=Date.now()).sort((a,b)=>new Date(a.scheduled_at)-new Date(b.scheduled_at));
  function changeTab(id){setTab(id);setMobileNav(false);setQuery("");setSelectedDay(null);}
  function finishGuide(){if(session?.user?.id)localStorage.setItem("epoxy_guide_done_"+session.user.id,"true");setGuideOpen(false);}
  function openQuickLead(job){setModal(null);setQuickLeadId(job.id);}
@@ -289,6 +291,18 @@ function App(){
    setModal(null);setToast("Saved successfully");if(connected)await reload();
   }catch(e){setError(e.message||"Could not save. Please try again.");}finally{setSaving(false);}
  }
+ async function scheduleLeadAppointment(job,kind,localWhen){
+  if(!["estimate","job"].includes(kind)||!localWhen){setError("Choose Estimate visit or Active job, then select a date and time.");return;}
+  const parsed=new Date(localWhen);
+  if(Number.isNaN(parsed.getTime())){setError("Enter a valid appointment date and time.");return;}
+  setQuickSaving(true);setError("");
+  try{
+    await upsert("jobs",{...job,scheduled_at:parsed.toISOString(),appointment_type:kind,stage:appointmentStage(job.stage,kind)},setJobs);
+    if(connected)await reload();
+    setToast((kind==="estimate"?"Estimate visit":"Active job")+" added to calendar");
+  }catch(e){setError(e.message||"Could not schedule appointment");}
+  finally{setQuickSaving(false);}
+ }
  async function setJobStage(job,stage){
   try{setError("");await upsert("jobs",{...job,stage},setJobs);if(connected)await reload();setToast("Job updated");}
   catch(e){setError(e.message||"Could not update job");}
@@ -318,7 +332,7 @@ function App(){
  const inArea=(j,id)=>id==="all"|| (id==="unassigned"?!areaForJob(j):areaForJob(j)?.id===id);
  const chosenArea=areas.find(a=>a.id===areaFilter);
  const areaLeads=jobs.filter(j=>j.stage!=="lost"&&inArea(j,areaFilter));
- const routeStops=areaLeads.filter(j=>j.stage==="booked"&&j.scheduled_at&&localDay(j.scheduled_at)===routeDate).sort((a,b)=>(a.visit_order??9999)-(b.visit_order??9999)||new Date(a.scheduled_at)-new Date(b.scheduled_at));
+ const routeStops=areaLeads.filter(j=>j.stage==="booked"&&j.appointment_type!=="estimate"&&j.scheduled_at&&localDay(j.scheduled_at)===routeDate).sort((a,b)=>(a.visit_order??9999)-(b.visit_order??9999)||new Date(a.scheduled_at)-new Date(b.scheduled_at));
  const awaitingSchedule=areaLeads.filter(j=>!j.scheduled_at&&j.stage!=="completed");
  const driveUrl=(from,to)=>"https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent(from)+"&destination="+encodeURIComponent(to)+"&travelmode=driving";
  function multiStopUrl(stops,base){
@@ -379,7 +393,7 @@ function App(){
          workspace_id:workspace.workspace_id,contact_id:contact.id,
          service:row.project_type||"Epoxy flooring inquiry",
          source:row.lead_source||"Email inquiry",
-         pickup_address:row.street_address||"",stage:"imported",
+         pickup_address:row.street_address||"",stage:"new",
          route_zone:"",visit_order:null,
          estimate_amount:null,final_amount:null,scheduled_at:null,
          notes:"Historical inquiry imported from email. Contact and booking status not yet verified.",
@@ -426,9 +440,9 @@ function App(){
     <button className="icon-btn light" aria-label="Edit follow-up" onClick={()=>openModal("task",{...t,due_at:localDateTimeInput(t.due_at||Date.now())})}><Pencil size={15}/></button>
   </div>;
  }
- function newJobForm(){openModal("job",{contact_id:contacts[0]?.id||"",service:"Epoxy flooring",stage:"booked",source:"Phone"});}
- function newEstimateForm(){openModal("job",{contact_id:contacts[0]?.id||"",service:"Epoxy flooring",stage:"estimate_sent",source:"Phone"});}
- function editJob(j,updates={}){openModal("job",{...j,...updates,scheduled_at:j.scheduled_at?new Date(j.scheduled_at).toISOString().slice(0,16):""});}
+ function newJobForm(){openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"booked",source:"Phone",appointment_type:"job"});}
+ function newEstimateForm(){openModal("job",{contact_id:"",service:"Epoxy flooring",stage:"estimate_sent",source:"Phone",appointment_type:"estimate"});}
+ function editJob(j,updates={}){openModal("job",{...j,...updates,scheduled_at:localDateTimeInput(j.scheduled_at)});}
  function workRecordRow(j){
   const c=person(j.contact_id),estimate=recordView==="estimates",completed=j.stage==="completed";
   return <div className="work-record" key={j.id}>
