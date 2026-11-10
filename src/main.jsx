@@ -274,12 +274,14 @@ function App(){
   try{
    if(modal==="lead"){
     const c=await upsert("contacts",{name:form.name.trim(),phone:form.phone||"",email:form.email||"",address:form.address||"",notes:form.contact_notes||"",created_at:new Date().toISOString()},setContacts);
-    await upsert("jobs",{contact_id:c.id,service:form.service||"Epoxy flooring",source:form.source||"Website",pickup_address:hasStreetAddress(form.address)?form.address.trim():"",stage:"new",estimate_amount:null,final_amount:null,scheduled_at:null,notes:form.notes||"",route_zone:form.route_zone||"",visit_order:null,created_at:new Date().toISOString()},setJobs);
+    await upsert("jobs",{contact_id:c.id,service:form.service||"Epoxy flooring",source:form.source||"Website",pickup_address:hasStreetAddress(form.address)?form.address.trim():"",stage:"new",estimate_amount:null,final_amount:null,scheduled_at:null,notes:form.notes||"",route_zone:form.route_zone||"",visit_order:null,appointment_type:null,created_at:new Date().toISOString()},setJobs);
    }
    if(modal==="contact")await upsert("contacts",{id:form.id,name:form.name.trim(),phone:form.phone||"",email:form.email||"",address:form.address||"",notes:form.notes||""},setContacts);
    if(modal==="job"){
     const address=draftAddress(form).trim();
-    await upsert("jobs",{id:form.id,contact_id:form.contact_id,service:form.service||"Epoxy flooring",source:form.source||"Other",pickup_address:address,stage:form.stage||"new",estimate_amount:form.estimate_amount===""||form.estimate_amount==null?null:Number(form.estimate_amount),final_amount:form.final_amount===""||form.final_amount==null?null:Number(form.final_amount),scheduled_at:form.scheduled_at?new Date(form.scheduled_at).toISOString():null,notes:form.notes||"",route_zone:form.route_zone||"",visit_order:form.visit_order??null,lead_details:form.lead_details||{},created_at:form.created_at||new Date().toISOString()},setJobs);
+    if(form.scheduled_at&&!["estimate","job"].includes(form.appointment_type))throw Error("Choose Estimate visit or Active job before booking a calendar appointment.");
+    const stageForSave=form.scheduled_at?appointmentStage(form.stage,form.appointment_type):form.stage||"new";
+    await upsert("jobs",{id:form.id,contact_id:form.contact_id,service:form.service||"Epoxy flooring",source:form.source||"Other",pickup_address:address,stage:stageForSave,appointment_type:form.scheduled_at?form.appointment_type:null,estimate_amount:form.estimate_amount===""||form.estimate_amount==null?null:Number(form.estimate_amount),final_amount:form.final_amount===""||form.final_amount==null?null:Number(form.final_amount),scheduled_at:form.scheduled_at?new Date(form.scheduled_at).toISOString():null,notes:form.notes||"",route_zone:form.route_zone||"",visit_order:form.visit_order??null,lead_details:form.lead_details||{},created_at:form.created_at||new Date().toISOString()},setJobs);
     // The contact record remembers the latest job site address, but each job keeps its own address.
     const existing=person(form.contact_id);
     if(existing&&hasStreetAddress(address)&&existing.address!==address){
@@ -414,12 +416,12 @@ function App(){
  }
  const heading={
   dashboard:["Good "+(new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening")+", Epoxy Creations","Here's what's happening across your business."],
-  pipeline:["Lead pipeline","Move every inquiry from first contact to completed job."],
+  pipeline:["Lead pipeline","New inquiries begin in New Leads. Schedule an estimate or active job from the lead."],
   areas:["Service area planner","Keep nearby leads and job sites together, then build an efficient day."],
   estimates_route:["Plan estimates","Pick customers and open directions in Google Maps."],
   jobs:["Jobs & estimates","Quotes and confirmed work, without the lead pipeline clutter."],
   customers:["Customers","Only customers with completed jobs appear here, with their job history."],
-  calendar:["Job calendar","Know what is scheduled and what's coming up."],
+  calendar:["Appointments & jobs","Estimate visits and confirmed installation jobs, clearly labeled."],
   tasks:["Follow-ups","Your reminders and customer conversations in one place."],
   settings:["Workspace settings","Your business tools, integrations and information."]
  }[tab];
@@ -483,7 +485,7 @@ function App(){
         </button>
         {showOverview&&<>
        <div className="metric-grid">
-        <div className="metric-card"><div className="metric-top"><span>New leads</span><div className="metric-icon blue"><Users size={19}/></div></div><strong>{newLeads}</strong><small>New or imported, needs review</small></div>
+        <div className="metric-card"><div className="metric-top"><span>New leads</span><div className="metric-icon blue"><Users size={19}/></div></div><strong>{newLeads}</strong><small>Incoming customer inquiries</small></div>
         <div className="metric-card"><div className="metric-top"><span>Open estimates</span><div className="metric-icon orange"><ClipboardList size={19}/></div></div><strong>{estimates}</strong><small>Ready for follow-up</small></div>
         <div className="metric-card"><div className="metric-top"><span>Booked jobs</span><div className="metric-icon green"><Truck size={19}/></div></div><strong>{booked}</strong><small>Scheduled or pending date</small></div>
         <div className="metric-card"><div className="metric-top"><span>Completed job value</span><div className="metric-icon green"><DollarSign size={19}/></div></div><strong>{money(revenue)}</strong><small>Recorded completed jobs, all time</small></div>
@@ -494,7 +496,7 @@ function App(){
        </div>
        <section className="panel"><div className="panel-top"><div><h2>Recent opportunities</h2><p>Your latest incoming jobs and estimates</p></div><button className="text-action" onClick={()=>changeTab("pipeline")}>Open pipeline <ArrowRight size={16}/></button></div><div className="jobs-list">{jobs.length?jobs.slice(0,5).map(jobRow):<Empty title="No leads yet" subtitle="Add your first lead to get started."/>}</div></section>
       </>}</div>}
-     {tab==="pipeline"&&<div className="content-stack"><div className="section-utility pipeline-utility"><div className="utility-note"><CircleDot size={16}/> Update lead stages as conversations move forward</div><button onClick={()=>openModal("lead",{source:"Phone"})} className="btn btn-outline"><Plus size={16}/> Add opportunity</button></div><div className="pipeline-workflow-hint"><strong>Simple process:</strong> Needs review → New lead → Contacted → Estimate sent → Booked → Completed. Open a customer to see their next step.</div><MobileLeads jobs={jobs} contacts={contacts} stages={STAGES} onEdit={openQuickLead} onAddFollowUp={openFollowUpFromLead}/><div className="pipeline-navigation"><span><b>{jobs.filter(j=>j.stage!=="lost").length}</b> leads across {STAGES.filter(s=>s.id!=="lost").length} stages</span><div className="pipeline-navigation-actions"><span>View more stages</span><button type="button" className="icon-btn light" aria-label="Scroll pipeline to previous stages" onClick={()=>document.getElementById("epoxy-pipeline-board")?.scrollBy({left:-640,behavior:"smooth"})}><ChevronLeft size={17}/></button><button type="button" className="icon-btn light" aria-label="Scroll pipeline to next stages" onClick={()=>document.getElementById("epoxy-pipeline-board")?.scrollBy({left:640,behavior:"smooth"})}><ChevronRight size={17}/></button></div></div><div className="pipeline-board" id="epoxy-pipeline-board" role="region" aria-label="Lead pipeline stages, horizontally scrollable" tabIndex={0}>{STAGES.filter(s=>s.id!=="lost").map(s=><div key={s.id} className="pipe-column"><div className="pipe-heading"><span className={"pipe-mark "+s.color}/><b>{s.label}</b><span>{jobs.filter(j=>j.stage===s.id).length}</span></div><div className="pipe-items">{jobs.filter(j=>j.stage===s.id).map(j=><div key={j.id} className="pipe-card"><div className="pipe-card-overline">{j.source||"Lead"}</div><div className="pipe-received" title={leadReceived(j.created_at)}><Clock size={12}/>{leadReceivedCompact(j.created_at)} <span>· {leadAge(j.created_at,now)}</span></div><button className="pipe-person" onClick={()=>openQuickLead(j)}>{person(j.contact_id)?.name||"Customer"} <ArrowUpRight size={15}/></button><span>{j.service}</span>{j.lead_details?.zip&&<span className="pipe-quote-meta">ZIP {j.lead_details.zip}{j.lead_details.timeline?" · "+j.lead_details.timeline:""}</span>}<button className="pipe-followup-action" title="Add this lead to follow-ups" onClick={()=>openFollowUpFromLead(j)}><ListTodo size={13}/> Add follow-up</button><div className="pipe-card-bottom"><b>{j.estimate_amount==null?"No quote":money(j.estimate_amount)}</b><select aria-label={"Change stage for "+j.service} value={j.stage} onChange={e=>setJobStage(j,e.target.value)}>{STAGES.map(st=><option key={st.id} value={st.id}>{st.label}</option>)}</select></div></div>)}{!jobs.some(j=>j.stage===s.id)&&<div className="pipe-empty">No opportunities</div>}</div></div>)}</div>{jobs.some(j=>j.stage==="lost")&&<div className="closed-note">Lost opportunities: {jobs.filter(j=>j.stage==="lost").length}. View and edit them in Jobs & estimates.</div>}</div>}
+     {tab==="pipeline"&&<div className="content-stack"><div className="section-utility pipeline-utility"><div className="utility-note"><CircleDot size={16}/> Update lead stages as conversations move forward</div><button onClick={()=>openModal("lead",{source:"Phone"})} className="btn btn-outline"><Plus size={16}/> Add opportunity</button></div><div className="pipeline-workflow-hint"><strong>Simple process:</strong> New Leads → Contacted → Estimate sent → Job booked → Completed. Open a customer to see their next step.</div><MobileLeads jobs={jobs} contacts={contacts} stages={STAGES} onEdit={openQuickLead} onAddFollowUp={openFollowUpFromLead}/><div className="pipeline-navigation"><span><b>{jobs.filter(j=>j.stage!=="lost").length}</b> leads across {STAGES.filter(s=>s.id!=="lost").length} stages</span><div className="pipeline-navigation-actions"><span>View more stages</span><button type="button" className="icon-btn light" aria-label="Scroll pipeline to previous stages" onClick={()=>document.getElementById("epoxy-pipeline-board")?.scrollBy({left:-640,behavior:"smooth"})}><ChevronLeft size={17}/></button><button type="button" className="icon-btn light" aria-label="Scroll pipeline to next stages" onClick={()=>document.getElementById("epoxy-pipeline-board")?.scrollBy({left:640,behavior:"smooth"})}><ChevronRight size={17}/></button></div></div><div className="pipeline-board" id="epoxy-pipeline-board" role="region" aria-label="Lead pipeline stages, horizontally scrollable" tabIndex={0}>{STAGES.filter(s=>s.id!=="lost").map(s=><div key={s.id} className="pipe-column"><div className="pipe-heading"><span className={"pipe-mark "+s.color}/><b>{s.label}</b><span>{jobs.filter(j=>j.stage===s.id).length}</span></div><div className="pipe-items">{jobs.filter(j=>j.stage===s.id).map(j=><div key={j.id} className="pipe-card"><div className="pipe-card-overline">{j.source||"Lead"}</div><div className="pipe-received" title={leadReceived(j.created_at)}><Clock size={12}/>{leadReceivedCompact(j.created_at)} <span>· {leadAge(j.created_at,now)}</span></div><button className="pipe-person" onClick={()=>openQuickLead(j)}>{person(j.contact_id)?.name||"Customer"} <ArrowUpRight size={15}/></button><span>{j.service}</span>{j.lead_details?.zip&&<span className="pipe-quote-meta">ZIP {j.lead_details.zip}{j.lead_details.timeline?" · "+j.lead_details.timeline:""}</span>}<button className="pipe-followup-action" title="Add this lead to follow-ups" onClick={()=>openFollowUpFromLead(j)}><ListTodo size={13}/> Add follow-up</button><div className="pipe-card-bottom"><b>{j.estimate_amount==null?"No quote":money(j.estimate_amount)}</b><select aria-label={"Change stage for "+j.service} value={j.stage} onChange={e=>setJobStage(j,e.target.value)}>{STAGES.map(st=><option key={st.id} value={st.id}>{st.label}</option>)}</select></div></div>)}{!jobs.some(j=>j.stage===s.id)&&<div className="pipe-empty">No opportunities</div>}</div></div>)}</div>{jobs.some(j=>j.stage==="lost")&&<div className="closed-note">Lost opportunities: {jobs.filter(j=>j.stage==="lost").length}. View and edit them in Jobs & estimates.</div>}</div>}
      {tab==="jobs"&&<div className="content-stack">
       <section className="panel list-panel">
        <div className="records-tabs" role="tablist" aria-label="Jobs and estimates">
@@ -592,7 +594,7 @@ function App(){
       <section className="panel settings-panel">
         <div className="panel-top"><div><h2>Import customer inquiries</h2><p>Import additional Epoxy Creations inquiries. Existing lead records remain in your CRM.</p></div></div>
         <div className="import-content">
-          <p>Duplicates are checked using original email message IDs. Customer details and project answers stay inside the private business workspace. Imported leads are marked <b>Needs review</b>, not automatically qualified or booked.</p>
+          <p>Duplicates are checked using original email message IDs. Customer details and project answers stay inside the private business workspace. Imported leads enter <b>New Leads</b>, not automatically qualified, contacted or booked.</p>
           <label className={"btn "+(connected&&session?"btn-primary":"btn-outline")}>
             <Download size={16}/> {importing?"Importing…":"Choose verified lead CSV"}
             <input type="file" accept=".csv,text/csv" disabled={!connected||!session||importing} style={{display:"none"}} onChange={e=>{importLeadsCsv(e.target.files?.[0]);e.target.value="";}}/>
@@ -612,7 +614,7 @@ function App(){
    {toast&&<div className="toast"><CircleCheck size={17}/>{toast}</div>}
    {quickJob&&<div className="modal-overlay quick-overlay" onMouseDown={e=>{if(e.target===e.currentTarget&&!quickSaving)setQuickLeadId(null);}}>
       <QuickLeadView key={quickJob.id} job={quickJob} contact={person(quickJob.contact_id)||{}} stages={STAGES} saving={quickSaving}
-       onClose={()=>setQuickLeadId(null)} onStage={setJobStage} onNotes={saveQuickNote}
+       onClose={()=>setQuickLeadId(null)} onStage={setJobStage} onNotes={saveQuickNote} onSchedule={scheduleLeadAppointment}
        onReminder={j=>{setQuickLeadId(null);openFollowUpFromLead(j);}}
        onEdit={j=>{setQuickLeadId(null);editJob(j);}}/>
     </div>}
@@ -702,7 +704,18 @@ function App(){
        {form.id&&form._addressEdited&&draftAddress(form)!==addressForJob(jobs.find(j=>j.id===form.id))&&<p className="pickup-save-hint">Save this address before using View House.</p>}
       </div>
       <label>Service area<select value={form.route_zone||""} onChange={e=>setForm({...form,route_zone:e.target.value})}><option value="">Match automatically by ZIP</option>{areas.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
-      <label>Scheduled date and time<input type="datetime-local" value={form.scheduled_at||""} onChange={e=>setForm({...form,scheduled_at:e.target.value})}/></label>
+      <div className="appointment-editor">
+       <strong>Calendar booking</strong><p>Choose what you're scheduling. An estimate visit is not a confirmed installation job.</p>
+       <div className="form-grid">
+         <label>Appointment type<select value={form.appointment_type||""} required={Boolean(form.scheduled_at)} onChange={e=>setForm({...form,appointment_type:e.target.value})}>
+           <option value="">Choose estimate or job</option>
+           <option value="estimate">Estimate visit / consultation</option>
+           <option value="job">Active job / installation</option>
+         </select></label>
+         <label>Date and time<input type="datetime-local" value={form.scheduled_at||""} onChange={e=>setForm({...form,scheduled_at:e.target.value})}/></label>
+       </div>
+       {form.scheduled_at&&<small>{form.appointment_type==="estimate"?"This appears as an Estimate Visit in the calendar, not a booked installation.":form.appointment_type==="job"?"This appears as an Active Job in the calendar and moves the lead to Job booked.":"Select the appointment type before saving."}</small>}
+     </div>
       <label>Latest contact note<textarea rows={3} value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Example: Called Tuesday at 2:25 PM. No answer, left voicemail."/></label>
       {form.id&&<div className="lead-followup-cta"><div><b>Need to contact this lead again?</b><span>Add a categorized follow-up with the latest note. The lead remains in the pipeline.</span></div><button type="button" className="btn btn-outline" onClick={()=>openFollowUpFromLead(form)}><ListTodo size={17}/> Add to follow-ups <ArrowRight size={15}/></button></div>}
     </>}
