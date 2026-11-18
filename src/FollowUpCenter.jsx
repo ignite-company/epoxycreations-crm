@@ -115,7 +115,7 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
        <div><span>Email activity</span><strong>{problems?problems+" to review":sent+" sent"}</strong><small>{replies} replies recorded</small></div>
      </div>
    </section>
-   {!sending&&<div className="fu-alert" role="status"><CirclePause size={24}/><div><strong>Automatic emails are not running yet.</strong><p>{connected?"Gmail is connected, but sending is paused. Review the sequence below and enable sending when ready. Existing leads are never emailed without separate enrollment.":"Connect the owner\u0027s Gmail below, then explicitly enable sending. No emails will be sent before authorization and activation."}</p></div></div>}}
+   {!sending&&<div className="fu-alert" role="status"><CirclePause size={24}/><div><strong>Automatic emails are not running yet.</strong><p>{connected?"Gmail is connected, but sending is paused. Review the sequence below and enable sending when ready. Existing leads are never emailed without separate enrollment.":"Connect the owner\u0027s Gmail below, then explicitly enable sending. No emails will be sent before authorization and activation."}</p></div></div>}
    {error&&<div className="fu-alert fu-error" role="alert"><AlertCircle size={22}/><span>{error}</span></div>}
    <section className="fu-section" aria-label="Gmail account connection">
     <div className="fu-section-head"><div><h2>Send from Epoxy Creations Gmail</h2><p>{connected?"Connected as "+connection.sender_email:"The owner securely signs in with Google. No Gmail password is stored in the CRM."}</p></div><Status type={sending?"good":connected?"warn":"muted"} label={sending?"Sending enabled":connected?"Connected, paused":"Connection required"}/></div>
