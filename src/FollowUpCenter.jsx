@@ -7,7 +7,7 @@ const STEPS = [
  { step:2, title:"Friendly reminder", when:"2 days later, only if they have not replied", help:"A short, helpful follow-up, not a copy of the first email" },
  { step:3, title:"Last check-in", when:"5 days after the first email, only if they have not replied", help:"A final polite check-in before the sequence stops" }
 ];
-const LABELS={draft:"Draft",pending_review:"Waiting for approval",scheduled:"Scheduled",sent:"Sent",replied:"Customer replied",failed:"Needs attention",paused:"Paused",cancelled:"Cancelled",opted_out:"Unsubscribed"};
+const LABELS={draft:"Draft",pending_review:"Waiting for approval",scheduled:"Scheduled",sending:"Sending",sent:"Sent",replied:"Customer replied",failed:"Needs attention",paused:"Paused",cancelled:"Cancelled",opted_out:"Unsubscribed"};
 const day=value=>value?new Date(value).toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"";
 const clean=value=>String(value||"").trim();
 const emailStatus=(messages,connected)=>{
@@ -28,6 +28,8 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
  const [messages,setMessages]=useState([]);
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
+ const [working,setWorking]=useState("");
+ const [notice,setNotice]=useState("");
  const [search,setSearch]=useState("");
  const [filter,setFilter]=useState("all");
  const [expanded,setExpanded]=useState(null);
@@ -48,6 +50,26 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
   finally{setLoading(false);}
  };
  useEffect(()=>{load();},[workspaceId,db]);
+ const gmailAction=async(action,extra={})=>{
+  if(!db||!workspaceId)return;
+  setWorking(action);setError("");setNotice("");
+  try{
+   const {data,error:apiError}=await db.functions.invoke("epoxy-gmail",{body:{action,workspace_id:workspaceId,...extra}});
+   if(apiError){
+    let reason=apiError.message||"Gmail setup request failed";
+    try{const details=await apiError.context?.json?.();if(details?.error)reason=details.error;}catch(_){}
+    throw new Error(reason);
+   }
+   if(data?.error)throw new Error(data.error);
+   if(action==="start"){
+    if(!String(data?.url||"").startsWith("https://accounts.google.com/o/oauth2/v2/auth?"))throw new Error("Invalid Google authorization URL");
+    window.location.assign(data.url);return;
+   }
+   setNotice(action==="enable"?"Automatic sending is enabled for leads newly moved into Follow Up. Existing leads need separate approval below.":action==="disable"?"Automatic sending is paused.":action==="enroll"?"The existing lead's three messages were queued.":action==="disconnect"?"Gmail disconnected and pending emails cancelled.":"Saved");
+   await load();
+  }catch(err){setError(err.message||"Gmail could not be updated.");}
+  finally{setWorking("");}
+ };
  const connected=connection?.status==="connected";
  const sending=connected&&connection?.sending_enabled===true;
  const byId=useMemo(()=>new Map(contacts.map(c=>[c.id,c])),[contacts]);
@@ -89,17 +111,37 @@ export default function FollowUpCenter({db,workspaceId,jobs=[],contacts=[],tasks
      </div>
      <div className="fu-health">
        <div><span>Email account</span><strong>{connected?"Connected":connection?.status==="error"?"Problem with connection":"Not connected"}</strong><small>{connected?connection.sender_email:"Jeremy must authorize his Gmail"}</small></div>
-       <div><span>AI email sending</span><strong>{sending?"Enabled":"Not active"}</strong><small>{sending?"Sending is permitted":"No automatic emails will be sent"}</small></div>
+       <div><span>Gmail sending</span><strong>{sending?"Enabled":"Not active"}</strong><small>{sending?"Sending is permitted":"No automatic emails will be sent"}</small></div>
        <div><span>Email activity</span><strong>{problems?problems+" to review":sent+" sent"}</strong><small>{replies} replies recorded</small></div>
      </div>
    </section>
-   {!sending&&<div className="fu-alert" role="status"><CirclePause size={24}/><div><strong>Automatic emails are not running yet.</strong><p>The CRM is ready to show the sequence and real delivery history. The business Gmail, AI generation and sending workflow still need to be connected and tested. No emails are being sent by this screen.</p></div></div>}
+   {!sending&&<div className="fu-alert" role="status"><CirclePause size={24}/><div><strong>Automatic emails are not running yet.</strong><p>{connected?"Gmail is connected, but sending is paused. Review the sequence below and enable sending when ready. Existing leads are never emailed without separate enrollment.":"Connect the owner\u0027s Gmail below, then explicitly enable sending. No emails will be sent before authorization and activation."}</p></div></div>}}
    {error&&<div className="fu-alert fu-error" role="alert"><AlertCircle size={22}/><span>{error}</span></div>}
+   <section className="fu-section" aria-label="Gmail account connection">
+    <div className="fu-section-head"><div><h2>Send from Epoxy Creations Gmail</h2><p>{connected?"Connected as "+connection.sender_email:"The owner securely signs in with Google. No Gmail password is stored in the CRM."}</p></div><Status type={sending?"good":connected?"warn":"muted"} label={sending?"Sending enabled":connected?"Connected, paused":"Connection required"}/></div>
+    <div className="fu-connect-actions">
+      <button className="fu-button fu-button-primary" type="button" disabled={Boolean(working)} onClick={()=>gmailAction("start")}><Mail size={17}/>{working==="start"?"Opening Google…":connected?"Reconnect Gmail":"Connect Gmail"}</button>
+      {connected&&(sending
+       ?<button className="fu-button fu-button-outline" type="button" disabled={Boolean(working)} onClick={()=>gmailAction("disable")}><CirclePause size={17}/> Pause automatic emails</button>
+       :<button className="fu-button fu-button-outline" type="button" disabled={Boolean(working)} onClick={()=>{if(window.confirm("Enable sending from the connected Gmail for NEW leads moved into Follow Up? Existing leads will not be automatically enrolled."))gmailAction("enable");}}><CheckCircle2 size={17}/> Enable follow-up emails</button>)}
+      {connected&&<button className="fu-button fu-button-outline" type="button" disabled={Boolean(working)} onClick={()=>{if(window.confirm("Disconnect Gmail and cancel all pending Epoxy follow-up emails?"))gmailAction("disconnect");}}>Disconnect</button>}
+    </div>
+    {notice&&<p className="fu-setup-notice" role="status">{notice}</p>}
+    <p className="fu-safe"><ShieldCheck size={18}/> Emails are sent using the business Gmail account, on weekdays between 9 AM and 6 PM Eastern. Replies, booked jobs, and moved or cancelled leads stop later messages. Limit: 15 emails per day.</p>
+   </section>
    <section className="fu-section" aria-label="Planned sequence">
     <div className="fu-section-head"><div><h2>The 3-email follow-up plan</h2><p>Each email will use what the customer wrote in their form. Replies and unsubscribe requests must stop later messages.</p></div><Status type={sending?"good":"warn"} label={sending?"Connection enabled":"Planned, not active"}/></div>
     <div className="fu-steps">{STEPS.map(s=><div className="fu-step" key={s.step}><div className="fu-step-number">{s.step}</div><div><strong>{s.title}</strong><span>{s.when}</span><p>{s.help}</p></div></div>)}</div>
-    <p className="fu-safe"><ShieldCheck size={18}/> Start with human approval of each AI-generated message. Only enable automatic sending after Jeremy approves the wording, sending rules, and opt-out handling.</p>
+    <p className="fu-safe"><ShieldCheck size={18}/> These are fixed, business-appropriate email templates, not AI-generated messages. Review them before enabling sending. Customers can reply directly or request no further follow-ups.</p>
    </section>
+   {connected&&sending&&<section className="fu-section" aria-label="Manually enroll existing follow-up customers">
+    <div className="fu-section-head"><div><h2>Existing leads in Follow Up</h2><p>Older leads are not enrolled automatically. Choose each customer deliberately if you want to contact them.</p></div></div>
+    <div className="fu-existing-list">{jobs.filter(j=>j.stage==="follow_up").map(j=>{
+      const c=contacts.find(x=>x.id===j.contact_id)||{};
+      const queued=grouped.get(j.id)||[];
+      return <div className="fu-existing-row" key={j.id}><div><strong>{c.name||"Customer"}</strong><small>{c.email||"No email"} · {queued.length?queued.length+" emails already on record":"Not enrolled"}</small></div><button className="fu-button fu-button-outline" type="button" disabled={Boolean(working)||Boolean(queued.length)||!c.email} onClick={()=>{if(window.confirm("Queue three follow-up emails for "+(c.name||"this lead")+" from "+connection.sender_email+"?"))gmailAction("enroll",{job_id:j.id});}}>{queued.length?"Already queued":"Queue 3 emails"}</button></div>;
+    })}{!jobs.some(j=>j.stage==="follow_up")&&<p className="fu-step-help">No leads are currently in Follow Up.</p>}</div>
+   </section>}
    </>}
    {mode==="customers"&&<section className="fu-section" aria-label="Customer email and reminder activity">
      <div className="fu-section-head"><div><h2>Customer follow-ups</h2><p>{jobs.length} lead records. Open a customer for reminders and email activity.</p></div></div>
